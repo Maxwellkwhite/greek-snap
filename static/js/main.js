@@ -191,11 +191,19 @@ class MarvelSnapGame {
         // Handle different power states
         powerElement.classList.remove('modified', 'negative');
         
-        if (powerToShow < 0) {
+        if (card.modified_power !== undefined && card.modified_power !== card.power) {
+            if (card.modified_power > card.power) {
+                // Power increased - green
+                powerElement.classList.add('modified');
+                powerElement.title = `Base: ${card.power}, Modified: ${powerToShow} (+${card.modified_power - card.power})`;
+            } else if (card.modified_power < card.power) {
+                // Power decreased - red
+                powerElement.classList.add('negative');
+                powerElement.title = `Base: ${card.power}, Modified: ${powerToShow} (${card.modified_power - card.power})`;
+            }
+        } else if (powerToShow < 0) {
+            // Negative power (shouldn't happen with base power, but just in case)
             powerElement.classList.add('negative');
-            powerElement.title = `Base: ${card.power}, Modified: ${powerToShow}`;
-        } else if (card.modified_power !== undefined && card.modified_power !== card.power) {
-            powerElement.classList.add('modified');
             powerElement.title = `Base: ${card.power}, Modified: ${powerToShow}`;
         }
         
@@ -394,7 +402,20 @@ class MarvelSnapGame {
         
         // Show modified power if different from base power
         const powerToShow = card.modified_power !== undefined ? card.modified_power : card.power;
-        document.getElementById('modalCardPower').textContent = powerToShow;
+        const powerElement = document.getElementById('modalCardPower');
+        powerElement.textContent = powerToShow;
+        
+        // Update power badge color based on modification
+        powerElement.className = 'power-badge';
+        if (card.modified_power !== undefined && card.modified_power !== card.power) {
+            if (card.modified_power > card.power) {
+                powerElement.style.backgroundColor = '#27ae60'; // Green for increased power
+            } else if (card.modified_power < card.power) {
+                powerElement.style.backgroundColor = '#e74c3c'; // Red for decreased power
+            }
+        } else {
+            powerElement.style.backgroundColor = '#3498db'; // Blue for base power
+        }
         
         document.getElementById('modalCardAbility').textContent = card.ability;
 

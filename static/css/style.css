@@ -44,7 +44,7 @@ body {
     position: absolute;
     top: 5px;
     left: 5px;
-    background: #e74c3c;
+    background: #f39c12;
     color: white;
     width: 25px;
     height: 25px;
@@ -60,7 +60,7 @@ body {
     position: absolute;
     bottom: 5px;
     right: 5px;
-    background: #27ae60;
+    background: #3498db;
     color: white;
     width: 25px;
     height: 25px;
@@ -74,8 +74,8 @@ body {
 }
 
 .card-power.modified {
-    background: #f39c12;
-    box-shadow: 0 0 8px rgba(243, 156, 18, 0.5);
+    background: #27ae60;
+    box-shadow: 0 0 8px rgba(39, 174, 96, 0.5);
     animation: pulse 2s infinite;
 }
 
@@ -87,13 +87,13 @@ body {
 
 @keyframes pulse {
     0% {
-        box-shadow: 0 0 8px rgba(243, 156, 18, 0.5);
+        box-shadow: 0 0 8px rgba(39, 174, 96, 0.5);
     }
     50% {
-        box-shadow: 0 0 12px rgba(243, 156, 18, 0.8);
+        box-shadow: 0 0 12px rgba(39, 174, 96, 0.8);
     }
     100% {
-        box-shadow: 0 0 8px rgba(243, 156, 18, 0.5);
+        box-shadow: 0 0 8px rgba(39, 174, 96, 0.5);
     }
 }
 
@@ -503,12 +503,12 @@ body {
 }
 
 .card-detail-stats .cost-badge {
-    background-color: #007bff;
+    background-color: #f39c12;
     color: white;
 }
 
 .card-detail-stats .power-badge {
-    background-color: #28a745;
+    background-color: #3498db;
     color: white;
 }
 
