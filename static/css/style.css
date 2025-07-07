@@ -1,0 +1,568 @@
+/* Marvel Snap Game Styles */
+
+body {
+    background: #f8f9fa;
+    min-height: 100vh;
+    color: #333;
+}
+
+/* Game Cards */
+.game-card {
+    width: 120px;
+    height: 160px;
+    margin: 5px;
+    background: white;
+    border: 2px solid #3498db;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.game-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+    border-color: #f39c12;
+}
+
+.game-card.selected {
+    border-color: #e74c3c;
+    transform: scale(1.05);
+}
+
+.game-card .card-body {
+    padding: 8px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.card-cost {
+    position: absolute;
+    top: 5px;
+    left: 5px;
+    background: #e74c3c;
+    color: white;
+    width: 25px;
+    height: 25px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 12px;
+}
+
+.card-power {
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    background: #27ae60;
+    color: white;
+    width: 25px;
+    height: 25px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 12px;
+    transition: all 0.3s ease;
+}
+
+.card-power.modified {
+    background: #f39c12;
+    box-shadow: 0 0 8px rgba(243, 156, 18, 0.5);
+    animation: pulse 2s infinite;
+}
+
+.card-power.negative {
+    background: #e74c3c;
+    color: white;
+    box-shadow: 0 0 8px rgba(231, 76, 60, 0.5);
+}
+
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 8px rgba(243, 156, 18, 0.5);
+    }
+    50% {
+        box-shadow: 0 0 12px rgba(243, 156, 18, 0.8);
+    }
+    100% {
+        box-shadow: 0 0 8px rgba(243, 156, 18, 0.5);
+    }
+}
+
+.card-name {
+    font-size: 14px;
+    font-weight: bold;
+    text-align: center;
+    margin-top: 20px;
+    margin-bottom: 5px;
+    line-height: 1.2;
+    color: #2c3e50;
+}
+
+.card-ability {
+    font-size: 10px;
+    text-align: center;
+    line-height: 1.3;
+    margin-bottom: 20px;
+    color: #7f8c8d;
+    padding: 0 5px;
+}
+
+/* Game Board Layout */
+.game-board {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.opponent-side, .player-side {
+    min-height: 120px;
+}
+
+.opponent-cards-row, .player-cards-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100px;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
+    border: 2px dashed rgba(255, 255, 255, 0.3);
+}
+
+.locations-row {
+    margin: 20px 0;
+}
+
+/* Location Cards */
+.location-card {
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 15px;
+    padding: 15px;
+    min-height: 200px;
+    backdrop-filter: blur(10px);
+}
+
+.location-info {
+    text-align: center;
+    padding: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    margin: 5px 0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.location-name {
+    color: #f39c12;
+    font-weight: bold;
+    margin-bottom: 3px;
+    font-size: 14px;
+}
+
+.location-effect {
+    font-size: 10px;
+    color: #bdc3c7;
+    line-height: 1.2;
+}
+
+.location-content {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Drop Zones */
+.drop-zone {
+    width: 100%;
+    height: 120px;
+    border: 2px dashed rgba(255, 255, 255, 0.3);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.opponent-drop-zone {
+    border-color: rgba(231, 76, 60, 0.3);
+    background: rgba(231, 76, 60, 0.05);
+}
+
+.player-drop-zone {
+    border-color: rgba(46, 204, 113, 0.3);
+    background: rgba(46, 204, 113, 0.05);
+}
+
+.drop-zone.drag-over {
+    border-color: #f39c12;
+    background: rgba(243, 156, 18, 0.1);
+    transform: scale(1.02);
+}
+
+.drop-zone.location-full {
+    border-color: #e74c3c;
+    background: rgba(231, 76, 60, 0.1);
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.drop-zone.location-full::after {
+    content: "FULL";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(231, 76, 60, 0.9);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+    z-index: 5;
+}
+
+.opponent-cards, .player-cards {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+    padding: 8px;
+}
+
+/* Bigger cards for drop zones */
+.drop-zone .game-card {
+    width: 90px;
+    height: 120px;
+    margin: 2px;
+    font-size: 10px;
+    background: white;
+}
+
+.drop-zone .card-cost {
+    width: 22px;
+    height: 22px;
+    font-size: 12px;
+}
+
+.drop-zone .card-power {
+    width: 22px;
+    height: 22px;
+    font-size: 12px;
+}
+
+.drop-zone .card-name {
+    font-size: 12px;
+    margin-top: 20px;
+    margin-bottom: 3px;
+    color: #2c3e50;
+}
+
+.drop-zone .card-ability {
+    font-size: 9px;
+    margin-bottom: 20px;
+    color: #7f8c8d;
+    padding: 0 3px;
+}
+
+/* Hand Cards */
+#playerHand {
+    min-height: 180px;
+    padding: 20px;
+}
+
+/* Hand and Controls Layout */
+.hand-and-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    position: relative;
+}
+
+/* Hand Container */
+.hand-container {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    justify-content: center;
+    width: auto;
+    min-width: 980px; /* 7 cards with extra space for margins and gaps */
+    max-width: 980px;
+}
+
+/* Energy and End Turn positioning */
+.energy-display {
+    position: relative;
+    z-index: 10;
+}
+
+#endTurnBtn {
+    position: relative;
+    z-index: 10;
+}
+
+.right-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-end;
+}
+
+.energy-display {
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(45deg, #e74c3c, #c0392b);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 18px;
+    border: 3px solid white;
+    box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+}
+
+.energy-display span {
+    font-size: 20px;
+    font-weight: bold;
+}
+
+#endTurnBtn {
+    background: linear-gradient(45deg, #e74c3c, #c0392b);
+    border: none;
+    padding: 12px 30px;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+#endTurnBtn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(231, 76, 60, 0.4);
+}
+
+#newGameBtn {
+    background: linear-gradient(45deg, #27ae60, #2ecc71);
+    border: none;
+    transition: all 0.3s ease;
+}
+
+#newGameBtn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 10px rgba(39, 174, 96, 0.4);
+}
+
+/* Modal Styling */
+.modal-content {
+    background: linear-gradient(135deg, #2c3e50, #34495e);
+    color: white;
+    border: 2px solid #3498db;
+}
+
+.modal-header {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.modal-footer {
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .game-card {
+        width: 100px;
+        height: 130px;
+    }
+    
+    .card-name {
+        font-size: 10px;
+    }
+    
+    .card-ability {
+        font-size: 7px;
+    }
+    
+    .location-card {
+        min-height: 150px;
+    }
+}
+
+/* Power Display */
+.power-display {
+    position: absolute;
+    bottom: -10px;
+    right: -10px;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 14px;
+    border: 2px solid white;
+    z-index: 10;
+}
+
+.opponent-power {
+    background: #e74c3c;
+    color: white;
+}
+
+.player-power {
+    background: #27ae60;
+    color: white;
+}
+
+/* Drop zone positioning for power displays */
+.drop-zone {
+    position: relative;
+}
+
+/* Game State Indicators */
+.game-over {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.winner-highlight {
+    border-color: #f39c12 !important;
+    box-shadow: 0 0 20px rgba(243, 156, 18, 0.5);
+}
+
+/* Drag and Drop Styles */
+.game-card[draggable="true"] {
+    cursor: grab;
+    transition: all 0.2s ease;
+}
+
+.game-card[draggable="true"]:active {
+    cursor: grabbing;
+}
+
+.game-card[draggable="true"]:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+}
+
+.location-card {
+    transition: all 0.2s ease;
+}
+
+/* Drag feedback */
+.game-card.dragging {
+    opacity: 0.5;
+    transform: rotate(5deg) scale(1.1);
+    z-index: 1000;
+}
+
+/* Card Detail Modal Styles */
+.card-detail-info {
+    text-align: center;
+}
+
+.card-detail-header {
+    margin-bottom: 1rem;
+}
+
+.card-detail-header h4 {
+    margin-bottom: 0.5rem;
+    color: white;
+}
+
+.card-detail-stats {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.card-detail-stats .cost-badge,
+.card-detail-stats .power-badge {
+    padding: 0.5rem 1rem;
+    border-radius: 50%;
+    font-weight: bold;
+    font-size: 1.2rem;
+    min-width: 3rem;
+    text-align: center;
+}
+
+.card-detail-stats .cost-badge {
+    background-color: #007bff;
+    color: white;
+}
+
+.card-detail-stats .power-badge {
+    background-color: #28a745;
+    color: white;
+}
+
+.card-detail-ability {
+    background-color: rgba(255, 255, 255, 0.1);
+    padding: 1rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.card-detail-ability p {
+    margin: 0;
+    font-style: italic;
+    color: #bdc3c7;
+}
+
+.card-detail-power-breakdown {
+    text-align: left;
+}
+
+.card-detail-power-breakdown h6 {
+    margin-bottom: 0.5rem;
+    color: white;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+    padding-bottom: 0.25rem;
+}
+
+.power-breakdown-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.25rem;
+    padding: 0.25rem 0;
+}
+
+.power-breakdown-item.positive {
+    color: #28a745;
+}
+
+.power-breakdown-item.negative {
+    color: #dc3545;
+}
+
+.power-breakdown-item.neutral {
+    color: #6c757d;
+}
+
+/* Make played cards clickable */
+.location-card .game-card {
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.location-card .game-card:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
