@@ -751,6 +751,37 @@ class MarvelSnapGame {
             });
         }
 
+        // Power reductions from all cards (affects everyone)
+        const allCards = [...location.player_cards, ...location.opponent_cards];
+        
+        let totalAllReduction = 0;
+        const allReductionSources = [];
+        allCards.forEach(allCard => {
+            if (allCard.ability_type === 'ongoing' && 
+                allCard.ability_effect && 
+                allCard.ability_effect.type === 'reduce_all_power') {
+                totalAllReduction += allCard.ability_effect.value;
+                allReductionSources.push(`${allCard.name} (-${allCard.ability_effect.value})`);
+            }
+        });
+
+        if (totalAllReduction > 0) {
+            const allReductionItem = document.createElement('div');
+            allReductionItem.className = 'power-breakdown-item negative';
+            allReductionItem.innerHTML = `<span>Global Power Reductions:</span><span>-${totalAllReduction}</span>`;
+            breakdownContainer.appendChild(allReductionItem);
+            
+            // Add individual reduction sources
+            allReductionSources.forEach(source => {
+                const sourceItem = document.createElement('div');
+                sourceItem.className = 'power-breakdown-item negative';
+                sourceItem.style.marginLeft = '1rem';
+                sourceItem.style.fontSize = '0.9em';
+                sourceItem.innerHTML = `<span>• ${source}</span>`;
+                breakdownContainer.appendChild(sourceItem);
+            });
+        }
+
         // Total modified power
         if (modifiedPower !== basePower) {
             const totalItem = document.createElement('div');

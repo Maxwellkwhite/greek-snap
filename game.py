@@ -94,10 +94,14 @@ class Game:
         # Apply location effects when card is played
         EffectHandler.apply_location_effect(location, player, self)
         
-        # Store On Reveal abilities to process at turn end (only for non-power-reduction effects)
+        # Handle immediate effects (like destroy) right away
         if card.get("ability_type") == "on_reveal" and card.get("ability_effect"):
             effect = card["ability_effect"]
-            if effect["type"] != "reduce_opponent_power":  # Power reductions are now ongoing
+            if effect["type"] == "destroy_card":
+                # Destroy effects happen immediately
+                EffectHandler.apply_card_ability(card, location, player, self)
+            elif effect["type"] != "reduce_opponent_power":  # Power reductions are now ongoing
+                # Other on_reveal effects are processed at turn end
                 self.pending_on_reveal_effects.append({
                     "card": card,
                     "location_index": location_index,

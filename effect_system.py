@@ -15,10 +15,15 @@ class EffectHandler:
         
         if effect_type == "draw_cards":
             EffectHandler._draw_cards(effect["value"], player, game_instance)
+        elif effect_type == "destroy_card":
+            EffectHandler._destroy_card(effect, location, player, game_instance, card)
         elif effect_type == "power_boost":
             # Power boosts are handled in power calculation, not here
             pass
         elif effect_type == "reduce_opponent_power":
+            # Power reductions are handled in power calculation, not here
+            pass
+        elif effect_type == "reduce_all_power":
             # Power reductions are handled in power calculation, not here
             pass
     
@@ -79,12 +84,48 @@ class EffectHandler:
                 opponent_card["ability_effect"]["type"] == "reduce_opponent_power"):
                 total_modifier -= opponent_card["ability_effect"]["value"]
         
+        # All cards power reduction effects (ongoing)
+        for all_card in player_cards + opponent_cards:
+            if (all_card.get("ability_type") == "ongoing" and 
+                all_card.get("ability_effect") and
+                all_card["ability_effect"]["type"] == "reduce_all_power"):
+                total_modifier -= all_card["ability_effect"]["value"]
+        
         return total_modifier
     
     @staticmethod
     def _draw_cards(count, player, game_instance):
         """Helper method to draw cards"""
         game_instance.draw_cards(count, player)
+    
+    @staticmethod
+    def _destroy_card(effect, location, player, game_instance, triggering_card=None):
+        """Helper method to destroy a card"""
+        import random
+        
+        target = effect.get("target", "own")  # "own" or "opponent"
+        count = effect.get("value", 1)  # Number of cards to destroy
+        
+        # Get the appropriate card list
+        if target == "own":
+            cards_to_destroy = location["player_cards"] if player == "player" else location["opponent_cards"]
+        else:  # opponent
+            cards_to_destroy = location["opponent_cards"] if player == "player" else location["player_cards"]
+        
+        # Filter out the triggering card (so it doesn't destroy itself)
+        available_cards = []
+        for i, card in enumerate(cards_to_destroy):
+            if triggering_card is None or card != triggering_card:
+                available_cards.append(i)
+        
+        # Destroy the specified number of cards randomly
+        destroyed_count = min(count, len(available_cards))
+        if destroyed_count > 0:
+            # Randomly select cards to destroy
+            cards_to_remove = random.sample(available_cards, destroyed_count)
+            # Remove cards in reverse order to maintain correct indices
+            for index in sorted(cards_to_remove, reverse=True):
+                cards_to_destroy.pop(index)
 
 # Effect Registry - Easy way to add new effects
 EFFECT_REGISTRY = {
@@ -103,6 +144,16 @@ EFFECT_REGISTRY = {
         "description": "Reduce opponent card power",
         "parameters": ["value"],
         "handler": None  # Handled in power calculation
+    },
+    "reduce_all_power": {
+        "description": "Reduce power of all cards at location",
+        "parameters": ["value"],
+        "handler": None  # Handled in power calculation
+    },
+    "destroy_card": {
+        "description": "Destroy cards from the location",
+        "parameters": ["value", "target"],
+        "handler": lambda effect, location, player, game, card: EffectHandler._destroy_card(effect, location, player, game, card)
     },
     
     # Location effects

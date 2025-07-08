@@ -4,40 +4,44 @@
 CHARACTERS = [
     {
         "id": 1,
-        "name": "Iron Man",
-        "power": 5,
-        "cost": 5,
-        "ability": "Ongoing: Your other cards here have +2 Power.",
-        "ability_type": "ongoing",
+        "name": "Zeus",
+        "power": 13,
+        "cost": 6,
+        "ability": "On Reveal: Destroy one of your cards here.",
+        "ability_type": "on_reveal",
         "ability_effect": {
-            "type": "power_boost", 
-            "value": 2, 
-            "target": "other_cards",
-            "description": "Boost other cards at this location"
+            "type": "destroy_card", 
+            "value": 1, 
+            "target": "own",
+            "description": "Destroy one of your own cards at this location"
         }
     },
     {
         "id": 2,
-        "name": "Captain America",
-        "power": 3,
-        "cost": 3,
-        "ability": "Ongoing: Your other cards here have +1 Power.",
-        "ability_type": "ongoing",
+        "name": "Poseidon",
+        "power": 10,
+        "cost": 5,
+        "ability": "No ability.",
+        "ability_type": "none",
         "ability_effect": {
-            "type": "power_boost", 
-            "value": 1, 
-            "target": "other_cards",
-            "description": "Boost other cards at this location"
+            "type": "none", 
+            "value": 0, 
+            "target": "none",
+            "description": "No ability"
         }
     },
     {
         "id": 3,
-        "name": "Hulk",
-        "power": 12,
-        "cost": 6,
-        "ability": "No ability.",
-        "ability_type": "none",
-        "ability_effect": None
+        "name": "Hades",
+        "power": 10,
+        "cost": 4,
+        "ability": "Ongoing: All cards here have -2 Power.",
+        "ability_type": "ongoing",
+        "ability_effect": {
+            "type": "reduce_all_power",
+            "value": 2,
+            "description": "Reduce power of all cards at this location"
+        }
     },
     {
         "id": 4,
