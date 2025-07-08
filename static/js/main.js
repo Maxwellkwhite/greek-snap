@@ -126,7 +126,7 @@ class MarvelSnapGame {
         // Add opponent cards
         const opponentCardsContainer = locationElement.querySelector('.opponent-cards');
         location.opponent_cards.forEach((card, cardIndex) => {
-            const cardElement = this.createCardElement(card, false);
+            const cardElement = this.createCardElement(card, false, cardIndex, locationIndex);
             const cardDiv = cardElement.querySelector('.game-card');
             cardDiv.addEventListener('click', () => {
                 this.showCardDetail(card, locationIndex, 'opponent', cardIndex);
@@ -137,7 +137,7 @@ class MarvelSnapGame {
         // Add player cards
         const playerCardsContainer = locationElement.querySelector('.player-cards');
         location.player_cards.forEach((card, cardIndex) => {
-            const cardElement = this.createCardElement(card, false);
+            const cardElement = this.createCardElement(card, false, cardIndex, locationIndex);
             const cardDiv = cardElement.querySelector('.game-card');
             cardDiv.addEventListener('click', () => {
                 this.showCardDetail(card, locationIndex, 'player', cardIndex);
@@ -174,21 +174,52 @@ class MarvelSnapGame {
         });
     }
 
-    createCardElement(card, isHandCard = false, cardIndex = null) {
+    createCardElement(card, isHandCard = false, cardIndex = null, locationIndex = null) {
         const template = document.getElementById('cardTemplate');
         const cardElement = template.content.cloneNode(true);
 
         const cardDiv = cardElement.querySelector('.game-card');
-        cardDiv.querySelector('.card-cost').textContent = card.cost;
+        
+        // Handle cost display
+        const costElement = cardDiv.querySelector('.card-cost');
+        let actualCost = card.cost;
+        let baseCost = card.cost;
+        
+        // Calculate global cost reduction from all locations
+        let globalCostReduction = 0;
+        this.gameState.locations.forEach(location => {
+            if (location.effect_type === 'cost_reduction') {
+                globalCostReduction += location.effect_value;
+            }
+        });
+        
+        // Apply global cost reduction to all cards
+        actualCost = Math.max(0, baseCost - globalCostReduction);
+        
+        costElement.textContent = actualCost;
+        
+        // Add visual feedback for cost changes
+        if (actualCost !== baseCost) {
+            costElement.classList.remove('cost-reduced', 'cost-increased');
+            if (actualCost < baseCost) {
+                costElement.classList.add('cost-reduced');
+                costElement.title = `Base: ${baseCost}, Actual: ${actualCost} (-${baseCost - actualCost})`;
+            } else if (actualCost > baseCost) {
+                costElement.classList.add('cost-increased');
+                costElement.title = `Base: ${baseCost}, Actual: ${actualCost} (+${actualCost - baseCost})`;
+            }
+        } else {
+            costElement.title = `Cost: ${actualCost}`;
+        }
+        
         cardDiv.querySelector('.card-name').textContent = card.name;
         
-        // Display power - show modified power if different from base power
+        // Show modified power if available, else base power
         const powerElement = cardDiv.querySelector('.card-power');
         const powerToShow = card.modified_power !== undefined ? card.modified_power : card.power;
-        
         powerElement.textContent = powerToShow;
         
-        // Handle different power states
+        // Handle different power states for cards on board/hand
         powerElement.classList.remove('modified', 'negative');
         
         if (card.modified_power !== undefined && card.modified_power !== card.power) {
@@ -212,8 +243,8 @@ class MarvelSnapGame {
         if (isHandCard && cardIndex !== null) {
             cardDiv.setAttribute('data-card-index', cardIndex);
             
-            // Check if card is playable
-            if (card.cost > this.gameState.player_energy) {
+            // Check if card is playable (use actual cost for check)
+            if (actualCost > this.gameState.player_energy) {
                 cardDiv.style.opacity = '0.5';
                 cardDiv.style.cursor = 'not-allowed';
             } else {
@@ -252,25 +283,75 @@ class MarvelSnapGame {
 
     // Drag and Drop Methods
     handleDragStart(e, cardIndex) {
-        e.dataTransfer.setData('text/plain', cardIndex);
-        e.dataTransfer.effectAllowed = 'move';
         this.draggedCardIndex = cardIndex;
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', cardIndex);
         
-        // Add visual feedback
-        e.target.style.opacity = '0.5';
-        e.target.style.transform = 'rotate(5deg)';
+        // Add dragging class for visual feedback
+        e.target.classList.add('dragging');
     }
 
     handleDragEnd(e) {
-        // Remove visual feedback
-        e.target.style.opacity = '1';
-        e.target.style.transform = 'rotate(0deg)';
+        // Reset all drop zones
+        document.querySelectorAll('.drop-zone').forEach(zone => {
+            zone.classList.remove('drag-over');
+        });
+        
+        // Reset dragged card cost display
+        const draggedCard = document.querySelector('.game-card.dragging');
+        if (draggedCard && this.draggedCardIndex !== null) {
+            const card = this.gameState.player_hand[this.draggedCardIndex];
+            const costElement = draggedCard.querySelector('.card-cost');
+            costElement.textContent = card.cost;
+            costElement.classList.remove('cost-reduced', 'cost-increased');
+            costElement.title = `Cost: ${card.cost}`;
+        }
+        
         this.draggedCardIndex = null;
     }
 
     handleDragOver(e) {
         e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
+        const dropZone = e.currentTarget;
+        dropZone.classList.add('drag-over');
+        
+        // Show cost preview if dragging a card (using global cost reduction)
+        if (this.draggedCardIndex !== null) {
+            const card = this.gameState.player_hand[this.draggedCardIndex];
+            
+            if (card) {
+                const baseCost = card.cost;
+                
+                // Calculate global cost reduction
+                let globalCostReduction = 0;
+                this.gameState.locations.forEach(location => {
+                    if (location.effect_type === 'cost_reduction') {
+                        globalCostReduction += location.effect_value;
+                    }
+                });
+                
+                const actualCost = Math.max(0, baseCost - globalCostReduction);
+                
+                // Update the dragged card's cost display
+                const draggedCard = document.querySelector('.game-card.dragging');
+                if (draggedCard) {
+                    const costElement = draggedCard.querySelector('.card-cost');
+                    costElement.textContent = actualCost;
+                    
+                    // Add visual feedback for cost changes
+                    costElement.classList.remove('cost-reduced', 'cost-increased');
+                    if (actualCost < baseCost) {
+                        costElement.classList.add('cost-reduced');
+                        costElement.title = `Base: ${baseCost}, Actual: ${actualCost} (-${baseCost - actualCost})`;
+                    } else if (actualCost > baseCost) {
+                        costElement.classList.add('cost-increased');
+                        costElement.title = `Base: ${baseCost}, Actual: ${actualCost} (+${actualCost - baseCost})`;
+                    } else {
+                        costElement.title = `Cost: ${actualCost}`;
+                    }
+                }
+            }
+        }
     }
 
     handleDragEnter(e) {
@@ -400,22 +481,10 @@ class MarvelSnapGame {
         document.getElementById('modalCardName').textContent = card.name;
         document.getElementById('modalCardCost').textContent = card.cost;
         
-        // Show modified power if different from base power
-        const powerToShow = card.modified_power !== undefined ? card.modified_power : card.power;
+        // Show base power in the modal's power circle (always blue)
         const powerElement = document.getElementById('modalCardPower');
-        powerElement.textContent = powerToShow;
-        
-        // Update power badge color based on modification
-        powerElement.className = 'power-badge';
-        if (card.modified_power !== undefined && card.modified_power !== card.power) {
-            if (card.modified_power > card.power) {
-                powerElement.style.backgroundColor = '#27ae60'; // Green for increased power
-            } else if (card.modified_power < card.power) {
-                powerElement.style.backgroundColor = '#e74c3c'; // Red for decreased power
-            }
-        } else {
-            powerElement.style.backgroundColor = '#3498db'; // Blue for base power
-        }
+        powerElement.textContent = card.power;
+        powerElement.style.backgroundColor = '#3498db'; // Blue for base power
         
         document.getElementById('modalCardAbility').textContent = card.ability;
 
@@ -439,6 +508,34 @@ class MarvelSnapGame {
         baseItem.className = 'power-breakdown-item neutral';
         baseItem.innerHTML = `<span>Base Power:</span><span>${basePower}</span>`;
         breakdownContainer.appendChild(baseItem);
+
+        // Location effect (use unique variable names)
+        const loc = this.gameState.locations[locationIndex];
+        const locCards = player === 'player' ? loc.player_cards : loc.opponent_cards;
+        let locationPower = 0;
+        let locationSource = null;
+        if (loc.effect_type === 'power_boost') {
+            locationPower = loc.effect_value;
+            locationSource = `${loc.name} (+${loc.effect_value})`;
+        } else if (loc.effect_type === 'single_card_bonus' && locCards.length === 1) {
+            locationPower = loc.effect_value;
+            locationSource = `${loc.name} (+${loc.effect_value})`;
+        }
+        // Add more effect types as needed
+        if (locationPower !== 0) {
+            const locItem = document.createElement('div');
+            locItem.className = 'power-breakdown-item positive';
+            locItem.innerHTML = `<span>Location Effect:</span><span>+${locationPower}</span>`;
+            breakdownContainer.appendChild(locItem);
+
+            // Show source
+            const sourceItem = document.createElement('div');
+            sourceItem.className = 'power-breakdown-item positive';
+            sourceItem.style.marginLeft = '1rem';
+            sourceItem.style.fontSize = '0.9em';
+            sourceItem.innerHTML = `<span>• ${locationSource}</span>`;
+            breakdownContainer.appendChild(sourceItem);
+        }
 
         // Power boosts from ongoing abilities
         const location = this.gameState.locations[locationIndex];

@@ -1,110 +1,7 @@
 import random
-
-# Marvel Snap Characters Data
-CHARACTERS = [
-    {
-        "id": 1,
-        "name": "Iron Man",
-        "power": 5,
-        "cost": 5,
-        "ability": "Ongoing: Your other cards here have +2 Power.",
-        "ability_type": "ongoing",
-        "ability_effect": {"type": "power_boost", "value": 2, "target": "other_cards"}
-    },
-    {
-        "id": 2,
-        "name": "Captain America",
-        "power": 3,
-        "cost": 3,
-        "ability": "Ongoing: Your other cards here have +1 Power.",
-        "ability_type": "ongoing",
-        "ability_effect": {"type": "power_boost", "value": 1, "target": "other_cards"}
-    },
-    {
-        "id": 3,
-        "name": "Hulk",
-        "power": 12,
-        "cost": 6,
-        "ability": "No ability.",
-        "ability_type": "none",
-        "ability_effect": None
-    },
-    {
-        "id": 4,
-        "name": "Black Widow",
-        "power": 1,
-        "cost": 1,
-        "ability": "On Reveal: Draw 1 card.",
-        "ability_type": "on_reveal",
-        "ability_effect": {"type": "draw_cards", "value": 1}
-    },
-    {
-        "id": 5,
-        "name": "Thor",
-        "power": 4,
-        "cost": 4,
-        "ability": "On Reveal: Draw 2 cards.",
-        "ability_type": "on_reveal",
-        "ability_effect": {"type": "draw_cards", "value": 2}
-    },
-    {
-        "id": 6,
-        "name": "Spider-Man",
-        "power": 3,
-        "cost": 3,
-        "ability": "Ongoing: Opponent's cards here have -1 Power.",
-        "ability_type": "ongoing",
-        "ability_effect": {"type": "reduce_opponent_power", "value": 1}
-    },
-    {
-        "id": 7,
-        "name": "Doctor Strange",
-        "power": 3,
-        "cost": 3,
-        "ability": "Ongoing: Opponent's cards here have -2 Power.",
-        "ability_type": "ongoing",
-        "ability_effect": {"type": "reduce_opponent_power", "value": 2}
-    },
-    {
-        "id": 8,
-        "name": "Scarlet Witch",
-        "power": 2,
-        "cost": 2,
-        "ability": "On Reveal: Draw 1 card.",
-        "ability_type": "on_reveal",
-        "ability_effect": {"type": "draw_cards", "value": 1}
-    },
-    {
-        "id": 9,
-        "name": "Ant-Man",
-        "power": 1,
-        "cost": 1,
-        "ability": "Ongoing: Your other cards here have +1 Power.",
-        "ability_type": "ongoing",
-        "ability_effect": {"type": "power_boost", "value": 1, "target": "other_cards"}
-    },
-    {
-        "id": 10,
-        "name": "Wasp",
-        "power": 1,
-        "cost": 0,
-        "ability": "No ability.",
-        "ability_type": "none",
-        "ability_effect": None
-    }
-]
-
-# Remove special cards since we're simplifying
-SPECIAL_CARDS = {}
-
-# Locations
-LOCATIONS = [
-    {"name": "Asgard", "effect": "Cards here cost 1 less."},
-    {"name": "Wakanda", "effect": "Cards here can't be destroyed."},
-    {"name": "New York", "effect": "Cards here have +1 Power."},
-    {"name": "Sanctum Sanctorum", "effect": "Cards here can't be moved."},
-    {"name": "Stark Tower", "effect": "After turn 3, cards here have +2 Power."}
-]
+from cards_data import CHARACTERS
+from locations_data import LOCATIONS
+from effect_system import EffectHandler
 
 class Game:
     def __init__(self):
@@ -150,6 +47,8 @@ class Game:
             {
                 "name": loc["name"],
                 "effect": loc["effect"],
+                "effect_type": loc["effect_type"],
+                "effect_value": loc["effect_value"],
                 "player_cards": [],
                 "opponent_cards": []
             }
@@ -169,7 +68,10 @@ class Game:
         
         card = hand[card_index]
         
-        if card["cost"] > energy:
+        # Calculate actual cost considering location effects
+        actual_cost = self.calculate_card_cost(card, location)
+        
+        if actual_cost > energy:
             return False, "Not enough energy"
         
         # Check if location is full (4 card limit)
@@ -180,13 +82,16 @@ class Game:
         # Play the card
         if player == "player":
             location["player_cards"].append(card)
-            self.player_energy -= card["cost"]
+            self.player_energy -= actual_cost
         else:
             location["opponent_cards"].append(card)
-            self.opponent_energy -= card["cost"]
+            self.opponent_energy -= actual_cost
         
         # Remove card from hand
         hand.pop(card_index)
+        
+        # Apply location effects when card is played
+        EffectHandler.apply_location_effect(location, player, self)
         
         # Store On Reveal abilities to process at turn end (only for non-power-reduction effects)
         if card.get("ability_type") == "on_reveal" and card.get("ability_effect"):
@@ -200,72 +105,50 @@ class Game:
         
         return True, "Card played successfully"
     
+    def calculate_card_cost(self, card, location):
+        """Calculate the actual cost of a card considering location effects"""
+        base_cost = card["cost"]
+        cost_modifier = EffectHandler.calculate_card_cost_modifier(card, location)
+        
+        # Apply global cost reductions from all locations
+        global_cost_reduction = 0
+        for loc in self.locations:
+            if loc.get("effect_type") == "cost_reduction":
+                global_cost_reduction += loc["effect_value"]
+        
+        total_cost = max(0, base_cost + cost_modifier - global_cost_reduction)
+        return total_cost
+    
+    def apply_location_effects(self, location_index, player):
+        """Apply location effects when a card is played"""
+        location = self.locations[location_index]
+        EffectHandler.apply_location_effect(location, player, self)
+    
     def process_on_reveal_ability(self, card, location_index, player):
         """Process On Reveal abilities when a card is played"""
-        if card.get("ability_type") != "on_reveal" or not card.get("ability_effect"):
-            return
-        
-        effect = card["ability_effect"]
-        effect_type = effect["type"]
-        
-        if effect_type == "draw_cards":
-            # Draw cards
-            self.draw_cards(effect["value"], player)
+        location = self.locations[location_index]
+        EffectHandler.apply_card_ability(card, location, player, self)
     
     def calculate_location_power(self, location, player):
-        """Calculate total power for a player at a location, including Ongoing abilities"""
+        """Calculate total power for a player at a location, including Ongoing abilities and location effects"""
         cards = location["player_cards"] if player == "player" else location["opponent_cards"]
+        opponent_cards = location["opponent_cards"] if player == "player" else location["player_cards"]
         total_power = 0
         
         for card in cards:
             base_power = card["power"]
-            modified_power = base_power
-            
-            # Apply power boosts from other Ongoing cards
-            for other_card in cards:
-                if (other_card != card and 
-                    other_card.get("ability_type") == "ongoing" and 
-                    other_card.get("ability_effect") and
-                    other_card["ability_effect"]["type"] == "power_boost" and
-                    other_card["ability_effect"]["target"] == "other_cards"):
-                    modified_power += other_card["ability_effect"]["value"]
-            
-            # Apply ongoing power reductions from opponent's cards
-            opponent_cards = location["opponent_cards"] if player == "player" else location["player_cards"]
-            for opponent_card in opponent_cards:
-                if (opponent_card.get("ability_type") == "ongoing" and 
-                    opponent_card.get("ability_effect") and
-                    opponent_card["ability_effect"]["type"] == "reduce_opponent_power"):
-                    modified_power -= opponent_card["ability_effect"]["value"]
-            
-            total_power += modified_power
+            power_modifier = EffectHandler.calculate_card_power_modifier(card, location, cards, opponent_cards)
+            total_power += base_power + power_modifier
         
         return total_power
     
     def calculate_card_power(self, card, location, player):
-        """Calculate the modified power of a single card, including Ongoing effects"""
+        """Calculate the modified power of a single card, including Ongoing effects and location effects"""
         base_power = card["power"]
-        modified_power = base_power
-        
-        # Apply power boosts from other Ongoing cards
         cards = location["player_cards"] if player == "player" else location["opponent_cards"]
-        for other_card in cards:
-            if (other_card != card and 
-                other_card.get("ability_type") == "ongoing" and 
-                other_card.get("ability_effect") and
-                other_card["ability_effect"]["type"] == "power_boost" and
-                other_card["ability_effect"]["target"] == "other_cards"):
-                modified_power += other_card["ability_effect"]["value"]
-        
-        # Apply ongoing power reductions from opponent's cards
         opponent_cards = location["opponent_cards"] if player == "player" else location["player_cards"]
-        for opponent_card in opponent_cards:
-            if (opponent_card.get("ability_type") == "ongoing" and 
-                opponent_card.get("ability_effect") and
-                opponent_card["ability_effect"]["type"] == "reduce_opponent_power"):
-                modified_power -= opponent_card["ability_effect"]["value"]
-        
-        return modified_power
+        power_modifier = EffectHandler.calculate_card_power_modifier(card, location, cards, opponent_cards)
+        return base_power + power_modifier
 
     def end_turn(self):
         # Process all pending On Reveal effects
@@ -339,10 +222,20 @@ class Game:
             location_data["opponent_power"] = opponent_power
             locations_with_power.append(location_data)
         
+        # Calculate modified costs for cards in hand
+        player_hand_with_costs = []
+        for card in self.player_hand:
+            card_data = card.copy()
+            # Calculate costs for each location
+            card_data["location_costs"] = {}
+            for i, location in enumerate(self.locations):
+                card_data["location_costs"][i] = self.calculate_card_cost(card, location)
+            player_hand_with_costs.append(card_data)
+        
         return {
             "turn": self.turn,
             "max_turns": self.max_turns,
-            "player_hand": self.player_hand,
+            "player_hand": player_hand_with_costs,
             "opponent_hand": self.opponent_hand,
             "player_energy": self.player_energy,
             "opponent_energy": self.opponent_energy,

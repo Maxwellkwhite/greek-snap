@@ -54,6 +54,31 @@ body {
     justify-content: center;
     font-weight: bold;
     font-size: 12px;
+    transition: all 0.3s ease;
+}
+
+.card-cost.cost-reduced {
+    color: #27ae60;
+    box-shadow: 0 0 8px rgba(39, 174, 96, 0.5);
+    animation: costPulse 2s infinite;
+}
+
+.card-cost.cost-increased {
+    color: #e74c3c;
+    box-shadow: 0 0 8px rgba(231, 76, 60, 0.5);
+    animation: costPulse 2s infinite;
+}
+
+@keyframes costPulse {
+    0% {
+        box-shadow: 0 0 8px rgba(39, 174, 96, 0.5);
+    }
+    50% {
+        box-shadow: 0 0 12px rgba(39, 174, 96, 0.8);
+    }
+    100% {
+        box-shadow: 0 0 8px rgba(39, 174, 96, 0.5);
+    }
 }
 
 .card-power {
@@ -75,6 +100,7 @@ body {
 
 .card-power.modified {
     background: #27ae60;
+    color: white;
     box-shadow: 0 0 8px rgba(39, 174, 96, 0.5);
     animation: pulse 2s infinite;
 }
