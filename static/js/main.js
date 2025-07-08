@@ -262,6 +262,13 @@ class MarvelSnapGame {
                     this.selectCard(cardIndex);
                 });
             }
+            
+            // Add card detail modal functionality for hand cards
+            cardDiv.addEventListener('click', (e) => {
+                // Prevent the click from triggering drag functionality
+                e.stopPropagation();
+                this.showCardDetail(card, null, 'hand', cardIndex);
+            });
         }
 
         return cardElement;
@@ -488,11 +495,85 @@ class MarvelSnapGame {
         
         document.getElementById('modalCardAbility').textContent = card.ability;
 
-        // Generate cost breakdown
-        this.generateCostBreakdown(card, locationIndex, player);
+        // Generate cost breakdown (only for cards on board, not hand cards)
+        if (locationIndex !== null) {
+            this.generateCostBreakdown(card, locationIndex, player);
+        } else {
+            // For hand cards, show simple cost info
+            const powerBreakdownContainer = document.getElementById('modalPowerBreakdown');
+            const costBreakdownDiv = document.createElement('div');
+            costBreakdownDiv.className = 'card-detail-cost-breakdown';
+            costBreakdownDiv.innerHTML = '<h6>Cost:</h6><div id="modalCostBreakdown"></div>';
+            powerBreakdownContainer.parentNode.insertBefore(costBreakdownDiv, powerBreakdownContainer);
+            
+            const costBreakdownContainer = document.getElementById('modalCostBreakdown');
+            costBreakdownContainer.innerHTML = '';
+            
+            const baseCost = card.cost;
+            
+            // Calculate global cost reduction from all locations
+            let globalCostReduction = 0;
+            const costReductionSources = [];
+            this.gameState.locations.forEach((location, index) => {
+                if (location.effect_type === 'cost_reduction') {
+                    globalCostReduction += location.effect_value;
+                    costReductionSources.push(`${location.name} (-${location.effect_value})`);
+                }
+            });
+            
+            const actualCost = Math.max(0, baseCost - globalCostReduction);
+            
+            // Base cost
+            const baseItem = document.createElement('div');
+            baseItem.className = 'cost-breakdown-item neutral';
+            baseItem.innerHTML = `<span>Base Cost:</span><span>${baseCost}</span>`;
+            costBreakdownContainer.appendChild(baseItem);
 
-        // Generate power breakdown
-        this.generatePowerBreakdown(card, locationIndex, player);
+            // Cost reductions from locations
+            if (globalCostReduction > 0) {
+                const reductionItem = document.createElement('div');
+                reductionItem.className = 'cost-breakdown-item positive';
+                reductionItem.innerHTML = `<span>Cost Reductions:</span><span>-${globalCostReduction}</span>`;
+                costBreakdownContainer.appendChild(reductionItem);
+                
+                // Add individual reduction sources
+                costReductionSources.forEach(source => {
+                    const sourceItem = document.createElement('div');
+                    sourceItem.className = 'cost-breakdown-item positive';
+                    sourceItem.style.marginLeft = '1rem';
+                    sourceItem.style.fontSize = '0.9em';
+                    sourceItem.innerHTML = `<span>• ${source}</span>`;
+                    costBreakdownContainer.appendChild(sourceItem);
+                });
+                
+                // Total modified cost
+                const totalItem = document.createElement('div');
+                totalItem.className = 'cost-breakdown-item neutral';
+                totalItem.style.fontWeight = 'bold';
+                totalItem.style.borderTop = '1px solid #dee2e6';
+                totalItem.style.paddingTop = '0.5rem';
+                totalItem.style.marginTop = '0.5rem';
+                totalItem.innerHTML = `<span>Total Cost:</span><span>${actualCost}</span>`;
+                costBreakdownContainer.appendChild(totalItem);
+            }
+        }
+
+        // Generate power breakdown (only for cards on board, not hand cards)
+        if (locationIndex !== null) {
+            this.generatePowerBreakdown(card, locationIndex, player);
+        } else {
+            // For hand cards, show simple power info
+            const breakdownContainer = document.getElementById('modalPowerBreakdown');
+            breakdownContainer.innerHTML = '';
+            
+            const basePower = card.power;
+            
+            // Base power
+            const baseItem = document.createElement('div');
+            baseItem.className = 'power-breakdown-item neutral';
+            baseItem.innerHTML = `<span>Base Power:</span><span>${basePower}</span>`;
+            breakdownContainer.appendChild(baseItem);
+        }
 
         // Show the modal
         const modal = new bootstrap.Modal(document.getElementById('cardDetailModal'));
