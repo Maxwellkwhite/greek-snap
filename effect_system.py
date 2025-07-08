@@ -28,7 +28,18 @@ class EffectHandler:
         effect_type = location.get("effect_type")
         
         if effect_type == "draw_card":
-            EffectHandler._draw_cards(location["effect_value"], player, game_instance)
+            # Delay draw card effects until end of turn
+            game_instance.pending_location_draw_effects.append({
+                "player": player,
+                "count": location["effect_value"]
+            })
+    
+    @staticmethod
+    def process_pending_location_draw_effects(game_instance):
+        """Process all pending location draw effects at end of turn"""
+        for effect in game_instance.pending_location_draw_effects:
+            EffectHandler._draw_cards(effect["count"], effect["player"], game_instance)
+        game_instance.pending_location_draw_effects.clear()
     
     @staticmethod
     def calculate_card_cost_modifier(card, location):

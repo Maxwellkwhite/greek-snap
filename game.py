@@ -19,6 +19,7 @@ class Game:
         self.game_over = False
         self.winner = None
         self.pending_on_reveal_effects = []  # Store On Reveal effects to process at turn end
+        self.pending_location_draw_effects = []  # Store location draw effects to process at turn end
         
         # Shuffle decks
         random.shuffle(self.player_deck)
@@ -155,6 +156,9 @@ class Game:
         for effect in self.pending_on_reveal_effects:
             self.process_on_reveal_ability(effect["card"], effect["location_index"], effect["player"])
         self.pending_on_reveal_effects.clear()
+        
+        # Process all pending location draw effects
+        EffectHandler.process_pending_location_draw_effects(self)
         
         if self.turn < self.max_turns:
             # Store unused energy for next turn
