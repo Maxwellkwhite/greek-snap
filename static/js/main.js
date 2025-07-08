@@ -488,12 +488,80 @@ class MarvelSnapGame {
         
         document.getElementById('modalCardAbility').textContent = card.ability;
 
+        // Generate cost breakdown
+        this.generateCostBreakdown(card, locationIndex, player);
+
         // Generate power breakdown
         this.generatePowerBreakdown(card, locationIndex, player);
 
         // Show the modal
         const modal = new bootstrap.Modal(document.getElementById('cardDetailModal'));
         modal.show();
+    }
+
+    generateCostBreakdown(card, locationIndex, player) {
+        const breakdownContainer = document.getElementById('modalCostBreakdown');
+        if (!breakdownContainer) {
+            // Create cost breakdown container if it doesn't exist
+            const powerBreakdownContainer = document.getElementById('modalPowerBreakdown');
+            const costBreakdownDiv = document.createElement('div');
+            costBreakdownDiv.className = 'card-detail-cost-breakdown';
+            costBreakdownDiv.innerHTML = '<h6>Cost Breakdown:</h6><div id="modalCostBreakdown"></div>';
+            powerBreakdownContainer.parentNode.insertBefore(costBreakdownDiv, powerBreakdownContainer);
+        }
+        
+        const costBreakdownContainer = document.getElementById('modalCostBreakdown');
+        costBreakdownContainer.innerHTML = '';
+
+        const baseCost = card.cost;
+        
+        // Calculate global cost reduction from all locations
+        let globalCostReduction = 0;
+        const costReductionSources = [];
+        this.gameState.locations.forEach((location, index) => {
+            if (location.effect_type === 'cost_reduction') {
+                globalCostReduction += location.effect_value;
+                costReductionSources.push(`${location.name} (-${location.effect_value})`);
+            }
+        });
+        
+        const actualCost = Math.max(0, baseCost - globalCostReduction);
+        
+        // Base cost
+        const baseItem = document.createElement('div');
+        baseItem.className = 'cost-breakdown-item neutral';
+        baseItem.innerHTML = `<span>Base Cost:</span><span>${baseCost}</span>`;
+        costBreakdownContainer.appendChild(baseItem);
+
+        // Cost reductions from locations
+        if (globalCostReduction > 0) {
+            const reductionItem = document.createElement('div');
+            reductionItem.className = 'cost-breakdown-item positive';
+            reductionItem.innerHTML = `<span>Cost Reductions:</span><span>-${globalCostReduction}</span>`;
+            costBreakdownContainer.appendChild(reductionItem);
+            
+            // Add individual reduction sources
+            costReductionSources.forEach(source => {
+                const sourceItem = document.createElement('div');
+                sourceItem.className = 'cost-breakdown-item positive';
+                sourceItem.style.marginLeft = '1rem';
+                sourceItem.style.fontSize = '0.9em';
+                sourceItem.innerHTML = `<span>• ${source}</span>`;
+                costBreakdownContainer.appendChild(sourceItem);
+            });
+        }
+
+        // Total modified cost
+        if (actualCost !== baseCost) {
+            const totalItem = document.createElement('div');
+            totalItem.className = 'cost-breakdown-item neutral';
+            totalItem.style.fontWeight = 'bold';
+            totalItem.style.borderTop = '1px solid #dee2e6';
+            totalItem.style.paddingTop = '0.5rem';
+            totalItem.style.marginTop = '0.5rem';
+            totalItem.innerHTML = `<span>Total Cost:</span><span>${actualCost}</span>`;
+            costBreakdownContainer.appendChild(totalItem);
+        }
     }
 
     generatePowerBreakdown(card, locationIndex, player) {
@@ -622,6 +690,7 @@ class MarvelSnapGame {
         document.getElementById('modalCardPower').textContent = '';
         document.getElementById('modalCardAbility').textContent = '';
         document.getElementById('modalPowerBreakdown').innerHTML = '';
+        document.getElementById('modalCostBreakdown').innerHTML = ''; // Reset cost breakdown
     }
 }
 

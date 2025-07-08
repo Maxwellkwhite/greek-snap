@@ -556,29 +556,39 @@ body {
     text-align: left;
 }
 
-.card-detail-power-breakdown h6 {
+.card-detail-cost-breakdown {
+    text-align: left;
+    margin-bottom: 1rem;
+}
+
+.card-detail-power-breakdown h6,
+.card-detail-cost-breakdown h6 {
     margin-bottom: 0.5rem;
     color: white;
     border-bottom: 1px solid rgba(255, 255, 255, 0.3);
     padding-bottom: 0.25rem;
 }
 
-.power-breakdown-item {
+.power-breakdown-item,
+.cost-breakdown-item {
     display: flex;
     justify-content: space-between;
     margin-bottom: 0.25rem;
     padding: 0.25rem 0;
 }
 
-.power-breakdown-item.positive {
+.power-breakdown-item.positive,
+.cost-breakdown-item.positive {
     color: #28a745;
 }
 
-.power-breakdown-item.negative {
+.power-breakdown-item.negative,
+.cost-breakdown-item.negative {
     color: #dc3545;
 }
 
-.power-breakdown-item.neutral {
+.power-breakdown-item.neutral,
+.cost-breakdown-item.neutral {
     color: #6c757d;
 }
 
