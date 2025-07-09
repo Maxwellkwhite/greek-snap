@@ -98,40 +98,67 @@ CHARACTERS = [
     },
     {
         "id": 8,
-        "name": "Scarlet Witch",
-        "power": 2,
-        "cost": 2,
-        "ability": "On Reveal: Draw 1 card.",
-        "ability_type": "on_reveal",
-        "ability_effect": {
-            "type": "draw_cards", 
-            "value": 1,
-            "description": "Draw cards when played"
-        }
-    },
-    {
-        "id": 9,
-        "name": "Ant-Man",
+        "name": "Hephaestus",
         "power": 1,
-        "cost": 1,
+        "cost": 2,
         "ability": "Ongoing: Your other cards here have +1 Power.",
         "ability_type": "ongoing",
         "ability_effect": {
             "type": "power_boost", 
-            "value": 1, 
+            "value": 1,
             "target": "other_cards",
             "description": "Boost other cards at this location"
         }
     },
     {
+        "id": 9,
+        "name": "Aphrodite",
+        "power": 3,
+        "cost": 2,
+        "ability": "On Reveal: Draw 1 card.",
+        "ability_type": "on_reveal",
+        "ability_effect": {
+            "type": "draw_cards", 
+            "value": 1, 
+            "description": "Draw 1 card when played"
+        }
+    },
+    {
         "id": 10,
-        "name": "Wasp",
-        "power": 1,
-        "cost": 0,
+        "name": "Hermes",
+        "power": 3,
+        "cost": 1,
         "ability": "No ability.",
         "ability_type": "none",
         "ability_effect": None
+    },
+    {
+        "id": 11,
+        "name": "Dionysus",
+        "power": 2,
+        "cost": 1,
+        "ability": "Ongoing: Reduce Opponent's Power by 1.",
+        "ability_type": "ongoing",
+        "ability_effect": {
+            "type": "reduce_opponent_power", 
+            "value": 1, 
+            "description": "Reduce opponent's power by 1"
+        }
+    },
+    {
+    "id": 12,
+    "name": "Hera",
+    "power": 5,
+    "cost": 6,
+    "ability": "Ongoing: Opponent's cards here have -2 Power.",
+    "ability_type": "ongoing",
+    "ability_effect": {
+        "type": "reduce_opponent_power", 
+        "value": 2,
+        "description": "Reduce opponent's power by 2"
     }
+},
+
 ]
 
 # Template for adding new cards:
