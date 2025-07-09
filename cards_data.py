@@ -137,7 +137,7 @@ CHARACTERS = [
         "name": "Dionysus",
         "power": 2,
         "cost": 1,
-        "ability": "Ongoing: Reduce Opponent's Power by 1.",
+        "ability": "Ongoing: Reduce Opponent's Power by 1 at this location.",
         "ability_type": "ongoing",
         "ability_effect": {
             "type": "reduce_opponent_power", 

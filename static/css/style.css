@@ -184,7 +184,7 @@ body {
     padding: 8px;
     background: rgba(255, 255, 255, 0.05);
     border-radius: 6px;
-    margin: 5px 0;
+    margin: 15px 0;
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
@@ -317,13 +317,15 @@ body {
     justify-content: space-between;
     width: 100%;
     position: relative;
+    min-height: 200px;
 }
 
 /* Hand Container */
 .hand-container {
     position: absolute;
     left: 50%;
-    transform: translateX(-50%);
+    top: 50%;
+    transform: translate(-50%, -50%);
     display: flex;
     justify-content: center;
     width: auto;
@@ -343,6 +345,9 @@ body {
 }
 
 .right-controls {
+    position: absolute;
+    right: 20px;
+    top: 100px;
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -352,7 +357,7 @@ body {
 .energy-display {
     width: 50px;
     height: 50px;
-    background: linear-gradient(45deg, #e74c3c, #c0392b);
+    background: #f39c12;
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -361,7 +366,7 @@ body {
     font-weight: bold;
     font-size: 18px;
     border: 3px solid white;
-    box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+    box-shadow: 0 4px 12px rgba(243, 156, 18, 0.3);
 }
 
 .energy-display span {

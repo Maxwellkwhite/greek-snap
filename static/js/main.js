@@ -19,11 +19,6 @@ class MarvelSnapGame {
             this.endTurn();
         });
 
-        // New game button
-        document.getElementById('newGameBtn').addEventListener('click', () => {
-            this.newGame();
-        });
-
         // Play again button in modal
         document.getElementById('playAgainBtn').addEventListener('click', () => {
             this.newGame();
