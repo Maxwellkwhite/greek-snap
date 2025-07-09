@@ -492,9 +492,11 @@ body {
 
 /* Drag feedback */
 .game-card.dragging {
-    opacity: 0.5;
+    opacity: 0.3;
     transform: rotate(5deg) scale(1.1);
     z-index: 1000;
+    pointer-events: none;
+    transition: none; /* Disable transitions during drag for smoother experience */
 }
 
 /* Card Detail Modal Styles */

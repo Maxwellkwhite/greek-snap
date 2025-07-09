@@ -297,6 +297,24 @@ class MarvelSnapGame {
         e.dataTransfer.effectAllowed = 'move';
         e.dataTransfer.setData('text/plain', cardIndex);
         
+        // Create a clone of the card for the drag image
+        const cardClone = e.target.cloneNode(true);
+        cardClone.style.position = 'absolute';
+        cardClone.style.top = '-1000px';
+        cardClone.style.left = '-1000px';
+        cardClone.style.zIndex = '10000';
+        document.body.appendChild(cardClone);
+        
+        // Set the drag image to be the cloned card
+        e.dataTransfer.setDragImage(cardClone, 60, 80);
+        
+        // Remove the clone after a short delay
+        setTimeout(() => {
+            if (cardClone.parentNode) {
+                cardClone.parentNode.removeChild(cardClone);
+            }
+        }, 100);
+        
         // Add dragging class for visual feedback
         e.target.classList.add('dragging');
     }
@@ -307,8 +325,13 @@ class MarvelSnapGame {
             zone.classList.remove('drag-over');
         });
         
+        // Remove dragging class from all cards
+        document.querySelectorAll('.game-card.dragging').forEach(card => {
+            card.classList.remove('dragging');
+        });
+        
         // Reset dragged card cost display
-        const draggedCard = document.querySelector('.game-card.dragging');
+        const draggedCard = document.querySelector('.game-card[data-card-index="' + this.draggedCardIndex + '"]');
         if (draggedCard && this.draggedCardIndex !== null) {
             const card = this.gameState.player_hand[this.draggedCardIndex];
             const costElement = draggedCard.querySelector('.card-cost');
