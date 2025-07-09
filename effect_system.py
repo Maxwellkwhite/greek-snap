@@ -17,6 +17,8 @@ class EffectHandler:
             EffectHandler._draw_cards(effect["value"], player, game_instance)
         elif effect_type == "destroy_card":
             EffectHandler._destroy_card(effect, location, player, game_instance, card)
+        elif effect_type == "increase_hand_costs":
+            EffectHandler._increase_hand_costs(effect["value"], player, game_instance)
         elif effect_type == "power_boost":
             # Power boosts are handled in power calculation, not here
             pass
@@ -77,6 +79,13 @@ class EffectHandler:
                 other_card["ability_effect"]["target"] == "other_cards"):
                 total_modifier += other_card["ability_effect"]["value"]
         
+        # Check if this card has a "when alone" ability
+        if (card.get("ability_type") == "ongoing" and 
+            card.get("ability_effect") and
+            card["ability_effect"]["type"] == "when_alone" and
+            len(player_cards) == 1):
+            total_modifier += card["ability_effect"]["value"]
+        
         # Opponent card effects (ongoing)
         for opponent_card in opponent_cards:
             if (opponent_card.get("ability_type") == "ongoing" and 
@@ -88,7 +97,8 @@ class EffectHandler:
         for all_card in player_cards + opponent_cards:
             if (all_card.get("ability_type") == "ongoing" and 
                 all_card.get("ability_effect") and
-                all_card["ability_effect"]["type"] == "reduce_all_power"):
+                all_card["ability_effect"]["type"] == "reduce_all_power" and
+                all_card != card):  # Don't apply to the card that has the ability
                 total_modifier -= all_card["ability_effect"]["value"]
         
         return total_modifier
@@ -127,6 +137,15 @@ class EffectHandler:
             for index in sorted(cards_to_remove, reverse=True):
                 cards_to_destroy.pop(index)
 
+    @staticmethod
+    def _increase_hand_costs(increase_amount, player, game_instance):
+        """Helper method to increase costs of all cards in hand"""
+        # Add a global cost increase for the player
+        if player == "player":
+            game_instance.player_hand_cost_increase = getattr(game_instance, 'player_hand_cost_increase', 0) + increase_amount
+        else:
+            game_instance.opponent_hand_cost_increase = getattr(game_instance, 'opponent_hand_cost_increase', 0) + increase_amount
+
 # Effect Registry - Easy way to add new effects
 EFFECT_REGISTRY = {
     # Card effects
@@ -150,10 +169,20 @@ EFFECT_REGISTRY = {
         "parameters": ["value"],
         "handler": None  # Handled in power calculation
     },
+    "when_alone": {
+        "description": "Boost power when this card is the only one at the location",
+        "parameters": ["value"],
+        "handler": None  # Handled in power calculation
+    },
     "destroy_card": {
         "description": "Destroy cards from the location",
         "parameters": ["value", "target"],
         "handler": lambda effect, location, player, game, card: EffectHandler._destroy_card(effect, location, player, game, card)
+    },
+    "increase_hand_costs": {
+        "description": "Increase cost of all cards in hand",
+        "parameters": ["value"],
+        "handler": lambda effect, player, game: EffectHandler._increase_hand_costs(effect["value"], player, game)
     },
     
     # Location effects

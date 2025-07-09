@@ -193,8 +193,11 @@ class MarvelSnapGame {
             }
         });
         
-        // Apply global cost reduction to all cards
-        actualCost = Math.max(0, baseCost - globalCostReduction);
+        // Apply hand cost increases from Ares or other effects
+        const handCostIncrease = this.gameState.player_hand_cost_increase || 0;
+        
+        // Apply global cost reduction and hand cost increases to all cards
+        actualCost = Math.max(0, baseCost + handCostIncrease - globalCostReduction);
         
         costElement.textContent = actualCost;
         
@@ -309,9 +312,32 @@ class MarvelSnapGame {
         if (draggedCard && this.draggedCardIndex !== null) {
             const card = this.gameState.player_hand[this.draggedCardIndex];
             const costElement = draggedCard.querySelector('.card-cost');
-            costElement.textContent = card.cost;
+            
+            // Recalculate the actual cost including hand cost increases
+            const baseCost = card.cost;
+            let globalCostReduction = 0;
+            this.gameState.locations.forEach(location => {
+                if (location.effect_type === 'cost_reduction') {
+                    globalCostReduction += location.effect_value;
+                }
+            });
+            const handCostIncrease = this.gameState.player_hand_cost_increase || 0;
+            const actualCost = Math.max(0, baseCost + handCostIncrease - globalCostReduction);
+            
+            costElement.textContent = actualCost;
             costElement.classList.remove('cost-reduced', 'cost-increased');
-            costElement.title = `Cost: ${card.cost}`;
+            
+            if (actualCost !== baseCost) {
+                if (actualCost < baseCost) {
+                    costElement.classList.add('cost-reduced');
+                    costElement.title = `Base: ${baseCost}, Actual: ${actualCost} (-${baseCost - actualCost})`;
+                } else if (actualCost > baseCost) {
+                    costElement.classList.add('cost-increased');
+                    costElement.title = `Base: ${baseCost}, Actual: ${actualCost} (+${actualCost - baseCost})`;
+                }
+            } else {
+                costElement.title = `Cost: ${actualCost}`;
+            }
         }
         
         this.draggedCardIndex = null;
@@ -322,7 +348,7 @@ class MarvelSnapGame {
         const dropZone = e.currentTarget;
         dropZone.classList.add('drag-over');
         
-        // Show cost preview if dragging a card (using global cost reduction)
+        // Show cost preview if dragging a card (using global cost reduction and hand cost increases)
         if (this.draggedCardIndex !== null) {
             const card = this.gameState.player_hand[this.draggedCardIndex];
             
@@ -337,7 +363,10 @@ class MarvelSnapGame {
                     }
                 });
                 
-                const actualCost = Math.max(0, baseCost - globalCostReduction);
+                // Apply hand cost increases from Ares or other effects
+                const handCostIncrease = this.gameState.player_hand_cost_increase || 0;
+                
+                const actualCost = Math.max(0, baseCost + handCostIncrease - globalCostReduction);
                 
                 // Update the dragged card's cost display
                 const draggedCard = document.querySelector('.game-card.dragging');
@@ -521,13 +550,32 @@ class MarvelSnapGame {
                 }
             });
             
-            const actualCost = Math.max(0, baseCost - globalCostReduction);
+            // Apply hand cost increases from Ares or other effects
+            const handCostIncrease = this.gameState.player_hand_cost_increase || 0;
+            
+            const actualCost = Math.max(0, baseCost + handCostIncrease - globalCostReduction);
             
             // Base cost
             const baseItem = document.createElement('div');
             baseItem.className = 'cost-breakdown-item neutral';
             baseItem.innerHTML = `<span>Base Cost:</span><span>${baseCost}</span>`;
             costBreakdownContainer.appendChild(baseItem);
+
+            // Hand cost increases
+            if (handCostIncrease > 0) {
+                const increaseItem = document.createElement('div');
+                increaseItem.className = 'cost-breakdown-item negative';
+                increaseItem.innerHTML = `<span>Hand Cost Increases:</span><span>+${handCostIncrease}</span>`;
+                costBreakdownContainer.appendChild(increaseItem);
+
+                // Show source
+                const sourceItem = document.createElement('div');
+                sourceItem.className = 'cost-breakdown-item negative';
+                sourceItem.style.marginLeft = '1rem';
+                sourceItem.style.fontSize = '0.9em';
+                sourceItem.innerHTML = `<span>• Ares (+${handCostIncrease})</span>`;
+                costBreakdownContainer.appendChild(sourceItem);
+            }
 
             // Cost reductions from locations
             if (globalCostReduction > 0) {
@@ -547,6 +595,16 @@ class MarvelSnapGame {
                 });
                 
                 // Total modified cost
+                const totalItem = document.createElement('div');
+                totalItem.className = 'cost-breakdown-item neutral';
+                totalItem.style.fontWeight = 'bold';
+                totalItem.style.borderTop = '1px solid #dee2e6';
+                totalItem.style.paddingTop = '0.5rem';
+                totalItem.style.marginTop = '0.5rem';
+                totalItem.innerHTML = `<span>Total Cost:</span><span>${actualCost}</span>`;
+                costBreakdownContainer.appendChild(totalItem);
+            } else if (handCostIncrease > 0) {
+                // Show total when there are hand cost increases but no reductions
                 const totalItem = document.createElement('div');
                 totalItem.className = 'cost-breakdown-item neutral';
                 totalItem.style.fontWeight = 'bold';
@@ -606,13 +664,32 @@ class MarvelSnapGame {
             }
         });
         
-        const actualCost = Math.max(0, baseCost - globalCostReduction);
+        // Get hand cost increase from game state
+        const handCostIncrease = this.gameState.player_hand_cost_increase || 0;
+        
+        const actualCost = Math.max(0, baseCost + handCostIncrease - globalCostReduction);
         
         // Base cost
         const baseItem = document.createElement('div');
         baseItem.className = 'cost-breakdown-item neutral';
         baseItem.innerHTML = `<span>Base Cost:</span><span>${baseCost}</span>`;
         costBreakdownContainer.appendChild(baseItem);
+
+        // Hand cost increases
+        if (handCostIncrease > 0) {
+            const increaseItem = document.createElement('div');
+            increaseItem.className = 'cost-breakdown-item negative';
+            increaseItem.innerHTML = `<span>Hand Cost Increases:</span><span>+${handCostIncrease}</span>`;
+            costBreakdownContainer.appendChild(increaseItem);
+
+            // Show source
+            const sourceItem = document.createElement('div');
+            sourceItem.className = 'cost-breakdown-item negative';
+            sourceItem.style.marginLeft = '1rem';
+            sourceItem.style.fontSize = '0.9em';
+            sourceItem.innerHTML = `<span>• Ares (+${handCostIncrease})</span>`;
+            costBreakdownContainer.appendChild(sourceItem);
+        }
 
         // Cost reductions from locations
         if (globalCostReduction > 0) {
@@ -780,6 +857,25 @@ class MarvelSnapGame {
                 sourceItem.innerHTML = `<span>• ${source}</span>`;
                 breakdownContainer.appendChild(sourceItem);
             });
+        }
+
+        // Card abilities that activate when alone
+        if (card.ability_type === 'ongoing' && 
+            card.ability_effect && 
+            card.ability_effect.type === 'when_alone' &&
+            locCards.length === 1) {
+            const aloneItem = document.createElement('div');
+            aloneItem.className = 'power-breakdown-item positive';
+            aloneItem.innerHTML = `<span>Card Ability:</span><span>+${card.ability_effect.value}</span>`;
+            breakdownContainer.appendChild(aloneItem);
+
+            // Show source
+            const sourceItem = document.createElement('div');
+            sourceItem.className = 'power-breakdown-item positive';
+            sourceItem.style.marginLeft = '1rem';
+            sourceItem.style.fontSize = '0.9em';
+            sourceItem.innerHTML = `<span>• ${card.name} (+${card.ability_effect.value})</span>`;
+            breakdownContainer.appendChild(sourceItem);
         }
 
         // Total modified power

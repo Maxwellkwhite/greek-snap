@@ -45,20 +45,21 @@ CHARACTERS = [
     },
     {
         "id": 4,
-        "name": "Black Widow",
-        "power": 1,
-        "cost": 1,
-        "ability": "On Reveal: Draw 1 card.",
-        "ability_type": "on_reveal",
+        "name": "Athena",
+        "power": 4,
+        "cost": 4,
+        "ability": "Ongoing: Your other cards here have +2 Power.",
+        "ability_type": "ongoing",
         "ability_effect": {
-            "type": "draw_cards", 
-            "value": 1,
-            "description": "Draw cards when played"
+            "type": "power_boost", 
+            "value": 2,
+            "target": "other_cards",
+            "description": "Boost other cards at this location"
         }
     },
     {
         "id": 5,
-        "name": "Thor",
+        "name": "Apollo",
         "power": 4,
         "cost": 4,
         "ability": "On Reveal: Draw 2 cards.",
@@ -66,33 +67,33 @@ CHARACTERS = [
         "ability_effect": {
             "type": "draw_cards", 
             "value": 2,
-            "description": "Draw cards when played"
+            "description": "Draw 2 cards when played"
         }
     },
     {
         "id": 6,
-        "name": "Spider-Man",
+        "name": "Artemis",
         "power": 3,
         "cost": 3,
-        "ability": "Ongoing: Opponent's cards here have -1 Power.",
+        "ability": "Ongoing: If you are alone here, +4 Power.",
         "ability_type": "ongoing",
         "ability_effect": {
-            "type": "reduce_opponent_power", 
-            "value": 1,
-            "description": "Reduce opponent card power"
+            "type": "when_alone", 
+            "value": 4,
+            "description": "Gain +4 power when this card is the only one at the location"
         }
     },
     {
         "id": 7,
-        "name": "Doctor Strange",
-        "power": 3,
+        "name": "Ares",
+        "power": 8,
         "cost": 3,
-        "ability": "Ongoing: Opponent's cards here have -2 Power.",
-        "ability_type": "ongoing",
+        "ability": "On Reveal: Add 1 cost to all your cards.",
+        "ability_type": "on_reveal",
         "ability_effect": {
-            "type": "reduce_opponent_power", 
-            "value": 2,
-            "description": "Reduce opponent card power"
+            "type": "increase_hand_costs", 
+            "value": 1,
+            "description": "Add 1 cost to all your cards when played"
         }
     },
     {

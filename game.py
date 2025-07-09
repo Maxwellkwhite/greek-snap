@@ -20,6 +20,8 @@ class Game:
         self.winner = None
         self.pending_on_reveal_effects = []  # Store On Reveal effects to process at turn end
         self.pending_location_draw_effects = []  # Store location draw effects to process at turn end
+        self.player_hand_cost_increase = 0  # Global cost increase for player's hand
+        self.opponent_hand_cost_increase = 0  # Global cost increase for opponent's hand
         
         # Shuffle decks
         random.shuffle(self.player_deck)
@@ -70,7 +72,7 @@ class Game:
         card = hand[card_index]
         
         # Calculate actual cost considering location effects
-        actual_cost = self.calculate_card_cost(card, location)
+        actual_cost = self.calculate_card_cost(card, location, player)
         
         if actual_cost > energy:
             return False, "Not enough energy"
@@ -97,8 +99,8 @@ class Game:
         # Handle immediate effects (like destroy) right away
         if card.get("ability_type") == "on_reveal" and card.get("ability_effect"):
             effect = card["ability_effect"]
-            if effect["type"] == "destroy_card":
-                # Destroy effects happen immediately
+            if effect["type"] == "destroy_card" or effect["type"] == "increase_hand_costs":
+                # These effects happen immediately
                 EffectHandler.apply_card_ability(card, location, player, self)
             elif effect["type"] != "reduce_opponent_power":  # Power reductions are now ongoing
                 # Other on_reveal effects are processed at turn end
@@ -110,8 +112,8 @@ class Game:
         
         return True, "Card played successfully"
     
-    def calculate_card_cost(self, card, location):
-        """Calculate the actual cost of a card considering location effects"""
+    def calculate_card_cost(self, card, location, player="player"):
+        """Calculate the actual cost of a card considering location effects and hand cost increases"""
         base_cost = card["cost"]
         cost_modifier = EffectHandler.calculate_card_cost_modifier(card, location)
         
@@ -121,7 +123,10 @@ class Game:
             if loc.get("effect_type") == "cost_reduction":
                 global_cost_reduction += loc["effect_value"]
         
-        total_cost = max(0, base_cost + cost_modifier - global_cost_reduction)
+        # Apply hand cost increases
+        hand_cost_increase = self.player_hand_cost_increase if player == "player" else self.opponent_hand_cost_increase
+        
+        total_cost = max(0, base_cost + cost_modifier + hand_cost_increase - global_cost_reduction)
         return total_cost
     
     def apply_location_effects(self, location_index, player):
@@ -237,7 +242,7 @@ class Game:
             # Calculate costs for each location
             card_data["location_costs"] = {}
             for i, location in enumerate(self.locations):
-                card_data["location_costs"][i] = self.calculate_card_cost(card, location)
+                card_data["location_costs"][i] = self.calculate_card_cost(card, location, "player")
             player_hand_with_costs.append(card_data)
         
         return {
@@ -251,5 +256,7 @@ class Game:
             "opponent_unused_energy": self.opponent_unused_energy,
             "locations": locations_with_power,
             "game_over": self.game_over,
-            "winner": self.winner
+            "winner": self.winner,
+            "player_hand_cost_increase": self.player_hand_cost_increase,
+            "opponent_hand_cost_increase": self.opponent_hand_cost_increase
         } 
