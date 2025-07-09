@@ -740,23 +740,29 @@ class MarvelSnapGame {
         const locCards = player === 'player' ? loc.player_cards : loc.opponent_cards;
         let locationPower = 0;
         let locationSource = null;
+        let isLocationReduction = false;
+        
         if (loc.effect_type === 'power_boost') {
             locationPower = loc.effect_value;
             locationSource = `${loc.name} (+${loc.effect_value})`;
         } else if (loc.effect_type === 'single_card_bonus' && locCards.length === 1) {
             locationPower = loc.effect_value;
             locationSource = `${loc.name} (+${loc.effect_value})`;
+        } else if (loc.effect_type === 'reduce_all_power') {
+            locationPower = loc.effect_value;
+            locationSource = `${loc.name} (-${loc.effect_value})`;
+            isLocationReduction = true;
         }
         // Add more effect types as needed
         if (locationPower !== 0) {
             const locItem = document.createElement('div');
-            locItem.className = 'power-breakdown-item positive';
-            locItem.innerHTML = `<span>Location Effect:</span><span>+${locationPower}</span>`;
+            locItem.className = isLocationReduction ? 'power-breakdown-item negative' : 'power-breakdown-item positive';
+            locItem.innerHTML = `<span>Location Effect:</span><span>${isLocationReduction ? '-' : '+'}${locationPower}</span>`;
             breakdownContainer.appendChild(locItem);
 
             // Show source
             const sourceItem = document.createElement('div');
-            sourceItem.className = 'power-breakdown-item positive';
+            sourceItem.className = isLocationReduction ? 'power-breakdown-item negative' : 'power-breakdown-item positive';
             sourceItem.style.marginLeft = '1rem';
             sourceItem.style.fontSize = '0.9em';
             sourceItem.innerHTML = `<span>• ${locationSource}</span>`;

@@ -69,6 +69,8 @@ class EffectHandler:
             total_modifier += location["effect_value"]
         elif effect_type == "single_card_bonus" and len(player_cards) == 1:
             total_modifier += location["effect_value"]
+        elif effect_type == "reduce_all_power":
+            total_modifier -= location["effect_value"]
         
         # Card ability effects (ongoing)
         for other_card in player_cards:
@@ -190,6 +192,16 @@ EFFECT_REGISTRY = {
         "description": "Reduce cost of cards",
         "parameters": ["value"],
         "handler": None  # Handled in cost calculation
+    },
+    "power_boost": {
+        "description": "Boost power of cards at location",
+        "parameters": ["value"],
+        "handler": None  # Handled in power calculation
+    },
+    "reduce_all_power": {
+        "description": "Reduce power of all cards at location",
+        "parameters": ["value"],
+        "handler": None  # Handled in power calculation
     },
     "single_card_bonus": {
         "description": "Bonus when only one card present",

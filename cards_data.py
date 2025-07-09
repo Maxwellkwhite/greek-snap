@@ -157,7 +157,7 @@ CHARACTERS = [
         "value": 2,
         "description": "Reduce opponent's power by 2"
     }
-},
+    },
 
 ]
 
