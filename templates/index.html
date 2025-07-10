@@ -77,19 +77,23 @@
     <!-- Location Template -->
     <template id="locationTemplate">
         <div class="col-md-4 mb-3">
+            <div class="drop-zone opponent-drop-zone" data-location-index="">
+                <div class="opponent-cards"></div>
+            </div>
             <div class="location-card">
+                <div class="location-background"></div>
+                <div class="location-overlay"></div>
                 <div class="location-content">
-                    <div class="drop-zone opponent-drop-zone" data-location-index="">
-                        <div class="opponent-cards"></div>
-                    </div>
                     <div class="location-info">
                         <h6 class="location-name"></h6>
+                    </div>
+                    <div class="location-info">
                         <small class="location-effect text-muted"></small>
                     </div>
-                    <div class="drop-zone player-drop-zone" data-location-index="">
-                        <div class="player-cards"></div>
-                    </div>
                 </div>
+            </div>
+            <div class="drop-zone player-drop-zone" data-location-index="">
+                <div class="player-cards"></div>
             </div>
         </div>
     </template>

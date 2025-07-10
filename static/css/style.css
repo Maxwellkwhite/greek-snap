@@ -166,68 +166,165 @@ body {
 }
 
 .locations-row {
-    margin: 20px 0;
+    margin: 20px 0 0 0;
 }
 
 /* Location Cards */
 .location-card {
-    background: rgba(255, 255, 255, 0.1);
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-radius: 15px;
-    padding: 15px;
-    min-height: 200px;
-    backdrop-filter: blur(10px);
+    background: rgba(0, 0, 0, 0.6);
+    border: 3px solid rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    padding: 0;
+    min-height: 160px;
+    backdrop-filter: blur(15px);
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    margin: 10px 0;
+}
+
+
+
+/* Greek-themed location styling */
+.location-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, 
+        rgba(255, 215, 0, 0.1) 0%, 
+        rgba(255, 255, 255, 0.05) 50%, 
+        rgba(255, 215, 0, 0.1) 100%);
+    border-radius: 20px;
+    z-index: 0;
+    pointer-events: none;
+}
+
+/* Location Background Image Container */
+.location-background {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    opacity: 0.7;
+    z-index: 1;
+}
+
+/* Location Overlay for better text readability */
+.location-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        135deg,
+        rgba(0, 0, 0, 0.4) 0%,
+        rgba(0, 0, 0, 0.2) 50%,
+        rgba(0, 0, 0, 0.6) 100%
+    );
+    z-index: 2;
 }
 
 .location-info {
+    position: relative;
+    z-index: 3;
     text-align: center;
-    padding: 8px;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 6px;
-    margin: 15px 0;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 8px 12px;
+    background: rgba(0, 0, 0, 0.9);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+    margin: 5px 0;
+}
+
+.location-info:first-child {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: inline-block;
+    width: auto;
+    min-width: fit-content;
+    z-index: 4;
+}
+
+.location-info:last-child {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: inline-flex;
+    align-items: center;
+    width: auto;
+    min-width: fit-content;
+    z-index: 4;
+    padding: 4px 8px;
 }
 
 .location-name {
     color: #f39c12;
     font-weight: bold;
-    margin-bottom: 3px;
+    margin-bottom: 0;
     font-size: 14px;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+    letter-spacing: 0.5px;
+    font-family: 'Georgia', serif;
+    text-transform: uppercase;
+    background: linear-gradient(45deg, #f39c12, #e67e22);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .location-effect {
-    font-size: 10px;
-    color: #bdc3c7;
-    line-height: 1.2;
+    font-size: 12px;
+    color: #ffffff !important;
+    line-height: 1.3;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+    font-style: italic;
+    margin: 0;
 }
 
 .location-content {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+    position: relative;
+    z-index: 3;
+    height: 100%;
+    min-height: 160px;
+    padding: 15px;
 }
 
 /* Drop Zones */
 .drop-zone {
     width: 100%;
     height: 120px;
-    border: 2px dashed rgba(255, 255, 255, 0.3);
-    border-radius: 8px;
+    border: 2px dashed rgba(255, 255, 255, 0.4);
+    border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s ease;
+    transition: all 0.3s ease;
     position: relative;
+    background: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(5px);
+    margin: 15px 0;
 }
 
 .opponent-drop-zone {
-    border-color: rgba(231, 76, 60, 0.3);
-    background: rgba(231, 76, 60, 0.05);
+    border-color: rgba(231, 76, 60, 0.5);
+    background: rgba(231, 76, 60, 0.1);
 }
 
 .player-drop-zone {
-    border-color: rgba(46, 204, 113, 0.3);
-    background: rgba(46, 204, 113, 0.05);
+    border-color: rgba(46, 204, 113, 0.5);
+    background: rgba(46, 204, 113, 0.1);
 }
 
 .drop-zone.drag-over {
@@ -306,8 +403,8 @@ body {
 
 /* Hand Cards */
 #playerHand {
-    min-height: 180px;
-    padding: 20px;
+    min-height: 160px;
+    padding: 5px 20px;
 }
 
 /* Hand and Controls Layout */
@@ -317,14 +414,14 @@ body {
     justify-content: space-between;
     width: 100%;
     position: relative;
-    min-height: 200px;
+    min-height: 160px;
 }
 
 /* Hand Container */
 .hand-container {
     position: absolute;
     left: 50%;
-    top: 50%;
+    top: 40%;
     transform: translate(-50%, -50%);
     display: flex;
     justify-content: center;
@@ -347,7 +444,7 @@ body {
 .right-controls {
     position: absolute;
     right: 20px;
-    top: 100px;
+    top: 30px;
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -429,7 +526,20 @@ body {
     }
     
     .location-card {
-        min-height: 150px;
+        min-height: 120px;
+    }
+    
+    .location-name {
+        font-size: 12px;
+        letter-spacing: 0.3px;
+    }
+    
+    .location-effect {
+        font-size: 9px;
+    }
+    
+    .drop-zone {
+        height: 100px;
     }
 }
 

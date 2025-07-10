@@ -52,6 +52,7 @@ class Game:
                 "effect": loc["effect"],
                 "effect_type": loc["effect_type"],
                 "effect_value": loc["effect_value"],
+                "background_image": loc.get("background_image", ""),
                 "player_cards": [],
                 "opponent_cards": []
             }

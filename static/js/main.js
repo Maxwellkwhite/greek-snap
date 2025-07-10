@@ -81,6 +81,12 @@ class MarvelSnapGame {
         locationElement.querySelector('.location-name').textContent = location.name;
         locationElement.querySelector('.location-effect').textContent = location.effect;
 
+        // Set background image if available
+        const backgroundElement = locationElement.querySelector('.location-background');
+        if (location.background_image) {
+            backgroundElement.style.backgroundImage = `url('${location.background_image}')`;
+        }
+
         // Set location index on drop zones
         const opponentDropZone = locationElement.querySelector('.opponent-drop-zone');
         const playerDropZone = locationElement.querySelector('.player-drop-zone');
