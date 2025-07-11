@@ -517,7 +517,10 @@ class MarvelSnapGame {
         }
     }
 
-    showGameOver() {
+    async showGameOver() {
+        // Award XP for game completion
+        await this.awardGameXP();
+        
         const modal = new bootstrap.Modal(document.getElementById('gameOverModal'));
         const resultDiv = document.getElementById('gameResult');
         
@@ -532,13 +535,94 @@ class MarvelSnapGame {
         
         resultText += '<p class="mt-3">Final Score:</p>';
         this.gameState.locations.forEach((location, index) => {
-            const playerPower = location.player_cards.reduce((sum, card) => sum + card.power, 0);
-            const opponentPower = location.opponent_cards.reduce((sum, card) => sum + card.power, 0);
+            const playerPower = location.player_power || 0;
+            const opponentPower = location.opponent_power || 0;
             resultText += `<p>${location.name}: ${playerPower} vs ${opponentPower}</p>`;
         });
         
         resultDiv.innerHTML = resultText;
         modal.show();
+    }
+
+    async awardGameXP() {
+        try {
+            const result = this.gameState.winner;
+            const response = await fetch('/api/game-result', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ result: result })
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+                // Show XP notification
+                this.showXPNotification(data.message, data.leveled_up);
+            }
+        } catch (error) {
+            console.error('Error awarding XP:', error);
+        }
+    }
+
+    showXPNotification(message, leveledUp) {
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.className = 'xp-notification';
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: ${leveledUp ? 'linear-gradient(45deg, #f39c12, #e67e22)' : 'linear-gradient(45deg, #3498db, #2980b9)'};
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            z-index: 9999;
+            font-weight: bold;
+            font-size: 1.1rem;
+            animation: slideIn 0.5s ease-out;
+        `;
+        
+        notification.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-star"></i>
+                <span>${message}</span>
+                ${leveledUp ? '<i class="fas fa-arrow-up" style="color: #f1c40f;"></i>' : ''}
+            </div>
+        `;
+        
+        // Add CSS animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+        `;
+        document.head.appendChild(style);
+        
+        document.body.appendChild(notification);
+        
+        // Remove notification after 5 seconds
+        setTimeout(() => {
+            notification.style.animation = 'slideOut 0.5s ease-in';
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 500);
+        }, 5000);
+        
+        // Add slideOut animation
+        const slideOutStyle = document.createElement('style');
+        slideOutStyle.textContent = `
+            @keyframes slideOut {
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(100%); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(slideOutStyle);
     }
 
     showCardDetail(card, locationIndex, player, cardIndex) {

@@ -158,6 +158,19 @@ CHARACTERS = [
         "description": "Reduce opponent's power by 2"
     }
     },
+        {
+    "id": 13,
+    "name": "Test",
+    "power": 100,
+    "cost": 100,
+    "ability": "On Reveal: Destroy one of your cards here.",
+    "ability_type": "on_reveal",
+    "ability_effect": {
+        "type": "destroy_card", 
+        "value": 2,
+        "description": "Reduce opponent's power by 2"
+    }
+    },
 
 ]
 

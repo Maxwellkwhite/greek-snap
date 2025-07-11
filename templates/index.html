@@ -92,6 +92,45 @@
             font-weight: bold;
             font-size: 1.1rem;
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .level-display:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+        .level-display.has-rewards {
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        .xp-info {
+            margin-top: 0.25rem;
+            font-size: 0.8rem;
+            opacity: 0.9;
+        }
+        .xp-info small {
+            display: block;
+            line-height: 1.2;
+        }
+        .rewards-indicator {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #e74c3c;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 0.7rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
         }
         .top-bar {
             position: absolute;
@@ -116,21 +155,80 @@
             color: #2c3e50;
             text-decoration: none;
         }
+        .top-controls {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .reset-button {
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            color: white;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+        .reset-button:hover {
+            background: linear-gradient(45deg, #c0392b, #a93226);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        .debug-button {
+            background: linear-gradient(45deg, #9b59b6, #8e44ad);
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            color: white;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+        .debug-button:hover {
+            background: linear-gradient(45deg, #8e44ad, #7d3c98);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
     </style>
 </head>
 <body>
     <div class="welcome-container">
         {% if user.is_authenticated %}
             <div class="top-bar">
-                <div class="level-display">
-                    <i class="fas fa-star me-2"></i>Level 1
+                <div class="level-display {% if pending_rewards %}has-rewards{% endif %}" 
+                     onclick="showLevelRewards()" 
+                     style="position: relative;">
+                    <i class="fas fa-star me-2"></i>Level {{ level }}
+                    {% if pending_rewards %}
+                        <div class="rewards-indicator">{{ pending_rewards|length }}</div>
+                    {% endif %}
+                    <div class="xp-info">
+                        <small>{{ xp }} XP</small>
+                        {% if xp_for_next > 0 %}
+                            <div class="progress mt-1" style="height: 4px; width: 100px;">
+                                <div class="progress-bar bg-warning" style="width: {{ progress }}%"></div>
+                            </div>
+                            <small>{{ xp_for_next }} XP to next level</small>
+                        {% endif %}
+                    </div>
                 </div>
-                <a href="{{ url_for('collection') }}" class="collection-button">
-                    <i class="fas fa-book me-2"></i>Collection
-                </a>
-                <a href="{{ url_for('logout') }}" class="logout-button">
-                    <i class="fas fa-sign-out-alt me-1"></i>Logout
-                </a>
+                <div class="top-controls">
+                    <button class="debug-button" onclick="debugUser()" title="Debug user state">
+                        <i class="fas fa-bug me-1"></i>Debug
+                    </button>
+                    <button class="reset-button" onclick="resetUser()" title="Reset all user data">
+                        <i class="fas fa-redo me-1"></i>Reset
+                    </button>
+                    <a href="{{ url_for('collection') }}" class="collection-button">
+                        <i class="fas fa-book me-2"></i>Collection
+                    </a>
+                    <a href="{{ url_for('logout') }}" class="logout-button">
+                        <i class="fas fa-sign-out-alt me-1"></i>Logout
+                    </a>
+                </div>
             </div>
             <div class="welcome-card">
                 <h1 class="game-title">Greek Snap</h1>
@@ -152,6 +250,173 @@
         {% endif %}
     </div>
 
+    <!-- Level Rewards Modal -->
+    <div class="modal fade" id="levelRewardsModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Level Rewards</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="levelRewardsContent">
+                    <!-- Content will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function showLevelRewards() {
+            const modal = new bootstrap.Modal(document.getElementById('levelRewardsModal'));
+            const content = document.getElementById('levelRewardsContent');
+            
+            // Get pending rewards data from the page
+            const pendingRewards = {{ pending_rewards|tojson }};
+            const userLevel = {{ level }};
+            const cardIdToName = {{ card_id_to_name|tojson }};
+            
+            let html = '<div class="row">';
+            
+            // Show all levels up to user's current level
+            for (let level = 1; level <= userLevel; level++) {
+                const levelRewards = {{ level_rewards|tojson }};
+                const rewards = levelRewards[level] || [];
+                const isPending = pendingRewards.some(r => r.level === level);
+                const isClaimed = !isPending && rewards.length > 0;
+                
+                html += '<div class="col-md-6 mb-3">';
+                html += '<div class="card ' + (isPending ? 'border-warning' : isClaimed ? 'border-success' : 'border-secondary') + '">';
+                html += '<div class="card-header d-flex justify-content-between align-items-center">';
+                html += '<strong>Level ' + level + '</strong>';
+                
+                if (isPending) {
+                    html += '<span class="badge bg-warning">Claim Available</span>';
+                } else if (isClaimed) {
+                    html += '<span class="badge bg-success">Claimed</span>';
+                } else {
+                    html += '<span class="badge bg-secondary">No Rewards</span>';
+                }
+                
+                html += '</div>';
+                html += '<div class="card-body">';
+                
+                if (rewards.length > 0) {
+                    html += '<p class="mb-2"><strong>Rewards:</strong></p>';
+                    html += '<ul class="list-unstyled">';
+                    rewards.forEach(cardId => {
+                        const cardName = cardIdToName[cardId] || 'Unknown Card';
+                        html += '<li><i class="fas fa-gift me-2"></i>' + cardName + ' Card</li>';
+                    });
+                    html += '</ul>';
+                    
+                    if (isPending) {
+                        html += '<button class="btn btn-warning btn-sm" onclick="claimLevelReward(' + level + ')">';
+                        html += '<i class="fas fa-gift me-1"></i>Claim Rewards</button>';
+                    }
+                } else {
+                    html += '<p class="text-muted">No rewards for this level</p>';
+                }
+                
+                html += '</div></div></div>';
+            }
+            
+            html += '</div>';
+            content.innerHTML = html;
+            modal.show();
+        }
+        
+        function claimLevelReward(level) {
+            fetch('/api/claim-level-reward', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ level: level })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Convert card IDs to names for display
+                    const cardIdToName = {{ card_id_to_name|tojson }};
+                    const cardNames = data.new_rewards.map(cardId => cardIdToName[cardId] || 'Unknown Card');
+                    
+                    // Show success message
+                    alert(data.message + '\\nNew cards: ' + cardNames.join(', '));
+                    // Reload page to update display
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while claiming rewards');
+            });
+        }
+
+        function resetUser() {
+            if (confirm('Are you sure you want to reset all your user data? This will:\n\n• Reset your XP to 0\n• Clear all unlocked cards\n• Reset your level to 1\n\nThis action cannot be undone!')) {
+                fetch('/api/reset-user', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(data.message);
+                        // Reload page to update display
+                        location.reload();
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while resetting user data');
+                });
+            }
+        }
+
+        function debugUser() {
+            fetch('/api/debug-user')
+            .then(response => response.json())
+            .then(data => {
+                console.log('Debug User Data:', data);
+                
+                let debugInfo = `User Debug Info:\n\n`;
+                debugInfo += `Email: ${data.email}\n`;
+                debugInfo += `XP: ${data.xp}\n`;
+                debugInfo += `Level: ${data.level}\n`;
+                debugInfo += `Total Cards: ${data.total_cards}\n\n`;
+                
+                debugInfo += `Unlocked Cards (${data.unlocked_cards.length}):\n`;
+                if (data.unlocked_card_names.length > 0) {
+                    data.unlocked_card_names.forEach(name => {
+                        debugInfo += `• ${name}\n`;
+                    });
+                } else {
+                    debugInfo += `• None\n`;
+                }
+                
+                debugInfo += `\nPending Rewards (${data.pending_rewards.length}):\n`;
+                if (data.pending_reward_names.length > 0) {
+                    data.pending_reward_names.forEach(name => {
+                        debugInfo += `• ${name}\n`;
+                    });
+                } else {
+                    debugInfo += `• None\n`;
+                }
+                
+                alert(debugInfo);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while getting debug info');
+            });
+        }
+    </script>
 </body>
 </html> 
