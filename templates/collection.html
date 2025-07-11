@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Collection - Greek Snap</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .collection-header {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2rem;
+            margin: 2rem 0;
+            text-align: center;
+            color: white;
+        }
+        
+        .collection-title {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+        
+        .collection-subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .card-grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 1.5rem;
+            padding: 2rem 0;
+        }
+        
+        .card-item {
+            width: 180px;
+            height: 240px;
+            margin: 10px;
+            background: white;
+            border: 3px solid #3498db;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            display: inline-block;
+        }
+        
+        .card-item.unlocked {
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        
+        .card-item.locked {
+            filter: grayscale(100%);
+            opacity: 0.6;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .card-item:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+            border-color: #f39c12;
+        }
+        
+        .card-item .card-body {
+            padding: 12px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        
+        .card-cost {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            background: #f39c12;
+            color: white;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+        
+        .card-power {
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
+            background: #3498db;
+            color: white;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+        
+        .card-name {
+            font-size: 18px;
+            font-weight: bold;
+            text-align: center;
+            margin-top: 30px;
+            margin-bottom: 8px;
+            line-height: 1.2;
+            color: #2c3e50;
+        }
+        
+        .card-ability {
+            font-size: 12px;
+            text-align: center;
+            line-height: 1.3;
+            margin-bottom: 30px;
+            color: #7f8c8d;
+            padding: 0 8px;
+        }
+        
+        .lock-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 15px;
+            font-size: 2rem;
+            color: white;
+        }
+        
+        .back-button {
+            position: fixed;
+            top: 2rem;
+            left: 2rem;
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 25px;
+            color: #2c3e50;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            font-weight: bold;
+        }
+        
+        .back-button:hover {
+            background: rgba(255, 255, 255, 1);
+            color: #2c3e50;
+            text-decoration: none;
+            transform: translateY(-2px);
+        }
+        
+        .collection-stats {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            color: white;
+            text-align: center;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+        
+        .stat-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 1rem;
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+        
+        .tab-navigation {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .tab-button {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 25px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .tab-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: translateY(-2px);
+        }
+        
+        .tab-button.active {
+            background: rgba(255, 255, 255, 0.9);
+            color: #2c3e50;
+            border-color: rgba(255, 255, 255, 1);
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .empty-state {
+            text-align: center;
+            color: white;
+            padding: 4rem 2rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .empty-state h3 {
+            margin-bottom: 1rem;
+            font-size: 1.5rem;
+        }
+        
+        .empty-state p {
+            opacity: 0.8;
+            font-size: 1.1rem;
+        }
+    </style>
+</head>
+<body>
+    <a href="{{ url_for('index') }}" class="back-button">
+        <i class="fas fa-arrow-left me-2"></i>Back to Menu
+    </a>
+    
+    <div class="container">
+        <div class="collection-header">
+            <h1 class="collection-title">
+                <i class="fas fa-book me-3"></i>Your Collection
+            </h1>
+            <p class="collection-subtitle">Manage your card collection</p>
+        </div>
+        
+        {% set owned_count = owned_cards | length %}
+        {% set total_count = all_cards | length %}
+        
+        <div class="collection-stats">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number">{{ owned_count }}</div>
+                    <div class="stat-label">Cards Owned</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">{{ total_count }}</div>
+                    <div class="stat-label">Total Cards</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">{{ "%.1f" | format((owned_count / total_count * 100) if total_count > 0 else 0) }}%</div>
+                    <div class="stat-label">Completion</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Tab Navigation -->
+        <div class="tab-navigation">
+            <button class="tab-button active" onclick="showTab('owned')">
+                <i class="fas fa-star me-2"></i>My Cards ({{ owned_count }})
+            </button>
+            <button class="tab-button" onclick="showTab('all')">
+                <i class="fas fa-list me-2"></i>All Cards ({{ total_count }})
+            </button>
+        </div>
+        
+        <!-- Owned Cards Tab -->
+        <div id="owned-tab" class="tab-content active">
+            {% if owned_cards %}
+            <div class="card-grid">
+                {% for card in owned_cards %}
+                <div class="card-item unlocked">
+                    <div class="card-body">
+                        <div class="card-cost">{{ card.cost }}</div>
+                        <div class="card-name">{{ card.name }}</div>
+                        <div class="card-ability">{{ card.ability }}</div>
+                        <div class="card-power">{{ card.power }}</div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-inbox fa-3x mb-3"></i>
+                <h3>No Cards Yet</h3>
+                <p>You haven't unlocked any cards yet. Start playing to build your collection!</p>
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- All Cards Tab -->
+        <div id="all-tab" class="tab-content">
+            <div class="card-grid">
+                {% for card in all_cards %}
+                <div class="card-item {% if card.unlocked %}unlocked{% else %}locked{% endif %}">
+                    <div class="card-body">
+                        <div class="card-cost">{{ card.cost }}</div>
+                        <div class="card-name">{{ card.name }}</div>
+                        <div class="card-ability">{{ card.ability }}</div>
+                        <div class="card-power">{{ card.power }}</div>
+                    </div>
+                    {% if not card.unlocked %}
+                    <div class="lock-overlay">
+                        <i class="fas fa-lock"></i>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function showTab(tabName) {
+            // Hide all tab contents
+            const tabContents = document.querySelectorAll('.tab-content');
+            tabContents.forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // Remove active class from all tab buttons
+            const tabButtons = document.querySelectorAll('.tab-button');
+            tabButtons.forEach(button => {
+                button.classList.remove('active');
+            });
+            
+            // Show selected tab content
+            document.getElementById(tabName + '-tab').classList.add('active');
+            
+            // Add active class to clicked button
+            event.target.classList.add('active');
+        }
+    </script>
+</body>
+</html> 

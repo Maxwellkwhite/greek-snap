@@ -43,9 +43,26 @@ class User(UserMixin, db.Model):
     misc1: Mapped[str] = mapped_column(String(100), nullable=True)
     misc2: Mapped[str] = mapped_column(String(100), nullable=True)
     misc3: Mapped[str] = mapped_column(String(100), nullable=True)
+    
+    # Relationship to collection
+    collection = relationship("UserCollection", back_populates="user", uselist=False)
+
+# Collection DB
+class UserCollection(db.Model):
+    __tablename__ = "user_collections"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(Integer, db.ForeignKey("users.id"))
+    unlocked_cards: Mapped[JSON] = mapped_column(JSON, default=list)  # List of card IDs
+    date_created: Mapped[DateTime] = mapped_column(DateTime, default=func.now())
+    date_updated: Mapped[DateTime] = mapped_column(DateTime, default=func.now(), onupdate=func.now())
+    
+    # Relationship to user
+    user = relationship("User", back_populates="collection")
 
 # Global game instance
 current_game = None
+
+
 
 @app.route('/')
 def index():
@@ -57,6 +74,70 @@ def game():
     if current_game is None:
         current_game = Game()
     return render_template('game.html', game=current_game, characters=CHARACTERS)
+
+@app.route('/collection')
+@login_required
+def collection():
+    # Get or create user collection
+    user_collection = UserCollection.query.filter_by(user_id=current_user.id).first()
+    if not user_collection:
+        user_collection = UserCollection(user_id=current_user.id, unlocked_cards=[])
+        db.session.add(user_collection)
+        db.session.commit()
+    
+    # Get all cards and mark which ones are unlocked
+    all_cards = CHARACTERS.copy()
+    unlocked_card_ids = set(user_collection.unlocked_cards)
+    
+    for card in all_cards:
+        card['unlocked'] = card['id'] in unlocked_card_ids
+    
+    # Separate owned and all cards
+    owned_cards = [card for card in all_cards if card['unlocked']]
+    
+    return render_template('collection.html', 
+                         all_cards=all_cards, 
+                         owned_cards=owned_cards, 
+                         user=current_user)
+
+@app.route('/api/unlock-card', methods=['POST'])
+@login_required
+def unlock_card():
+    data = request.get_json()
+    card_id = data.get('card_id')
+    
+    if not card_id:
+        return jsonify({"success": False, "message": "Card ID is required"})
+    
+    # Get or create user collection
+    user_collection = UserCollection.query.filter_by(user_id=current_user.id).first()
+    if not user_collection:
+        user_collection = UserCollection(user_id=current_user.id, unlocked_cards=[])
+        db.session.add(user_collection)
+    
+    # Add card to collection if not already there
+    if card_id not in user_collection.unlocked_cards:
+        user_collection.unlocked_cards.append(card_id)
+        db.session.commit()
+        return jsonify({"success": True, "message": f"Card unlocked!"})
+    else:
+        return jsonify({"success": False, "message": "Card already unlocked"})
+
+@app.route('/api/collection')
+@login_required
+def get_collection():
+    """Get user's collection data via API"""
+    user_collection = UserCollection.query.filter_by(user_id=current_user.id).first()
+    if not user_collection:
+        user_collection = UserCollection(user_id=current_user.id, unlocked_cards=[])
+        db.session.add(user_collection)
+        db.session.commit()
+    
+    return jsonify({
+        "unlocked_cards": user_collection.unlocked_cards,
+        "total_cards": len(CHARACTERS),
+        "completion_percentage": round((len(user_collection.unlocked_cards) / len(CHARACTERS)) * 100, 1)
+    })
 
 @app.route('/api/game-state')
 def get_game_state():
