@@ -77,7 +77,10 @@ def index():
         
         # Check for pending rewards
         user_collection = UserCollection.query.filter_by(user_id=current_user.id).first()
-        unlocked_cards = user_collection.unlocked_cards if user_collection else []
+        if user_collection and user_collection.unlocked_cards is not None:
+            unlocked_cards = user_collection.unlocked_cards if isinstance(user_collection.unlocked_cards, list) else []
+        else:
+            unlocked_cards = []
         pending_rewards = XPSystem.get_pending_rewards(current_user.xp, unlocked_cards)
         
         # Get all level rewards for display
@@ -114,10 +117,15 @@ def collection():
         user_collection = UserCollection(user_id=current_user.id, unlocked_cards=[])
         db.session.add(user_collection)
         db.session.commit()
-    
+    else:
+        # Ensure the unlocked_cards field is properly initialized as a list
+        if user_collection.unlocked_cards is None:
+            user_collection.unlocked_cards = []
+            db.session.commit()
     # Get all cards and mark which ones are unlocked
     all_cards = CHARACTERS.copy()
-    unlocked_card_ids = set(user_collection.unlocked_cards)
+    unlocked_cards = user_collection.unlocked_cards if isinstance(user_collection.unlocked_cards, list) else []
+    unlocked_card_ids = set(unlocked_cards)
     
     for card in all_cards:
         card['unlocked'] = card['id'] in unlocked_card_ids
@@ -145,6 +153,12 @@ def unlock_card():
         user_collection = UserCollection(user_id=current_user.id, unlocked_cards=[])
         db.session.add(user_collection)
     
+    # Ensure unlocked_cards is a list
+    if user_collection.unlocked_cards is None:
+        user_collection.unlocked_cards = []
+    elif not isinstance(user_collection.unlocked_cards, list):
+        user_collection.unlocked_cards = list(user_collection.unlocked_cards) if user_collection.unlocked_cards else []
+    
     # Add card to collection if not already there
     if card_id not in user_collection.unlocked_cards:
         user_collection.unlocked_cards.append(card_id)
@@ -163,10 +177,11 @@ def get_collection():
         db.session.add(user_collection)
         db.session.commit()
     
+    unlocked_cards = user_collection.unlocked_cards if isinstance(user_collection.unlocked_cards, list) else []
     return jsonify({
-        "unlocked_cards": user_collection.unlocked_cards,
+        "unlocked_cards": unlocked_cards,
         "total_cards": len(CHARACTERS),
-        "completion_percentage": round((len(user_collection.unlocked_cards) / len(CHARACTERS)) * 100, 1)
+        "completion_percentage": round((len(unlocked_cards) / len(CHARACTERS)) * 100, 1)
     })
 
 @app.route('/api/award-xp', methods=['POST'])
@@ -235,6 +250,11 @@ def claim_level_reward():
         user_collection = UserCollection(user_id=current_user.id, unlocked_cards=[])
         db.session.add(user_collection)
         db.session.commit()  # Commit to ensure the collection exists
+    else:
+        # Ensure the unlocked_cards field is properly initialized as a list
+        if user_collection.unlocked_cards is None:
+            user_collection.unlocked_cards = []
+            db.session.commit()
     
     # Get rewards for this level
     level_rewards = XPSystem.get_rewards_for_level(level)
@@ -243,12 +263,26 @@ def claim_level_reward():
     print(f"DEBUG: Claiming level {level} rewards")
     print(f"DEBUG: Level rewards: {level_rewards}")
     print(f"DEBUG: Current unlocked cards: {user_collection.unlocked_cards}")
+    print(f"DEBUG: Unlocked cards type: {type(user_collection.unlocked_cards)}")
     print(f"DEBUG: User collection ID: {user_collection.id}")
     print(f"DEBUG: User ID: {current_user.id}")
     
     # Check which rewards haven't been claimed yet
     new_rewards = []
-    current_unlocked = user_collection.unlocked_cards or []
+    
+    # Ensure unlocked_cards is a list and handle potential None values
+    if user_collection.unlocked_cards is None:
+        current_unlocked = []
+    elif isinstance(user_collection.unlocked_cards, list):
+        current_unlocked = user_collection.unlocked_cards.copy()
+    else:
+        # Handle case where it might be stored as a string or other format
+        try:
+            current_unlocked = list(user_collection.unlocked_cards) if user_collection.unlocked_cards else []
+        except:
+            current_unlocked = []
+    
+    print(f"DEBUG: Processing unlocked cards: {current_unlocked} (type: {type(current_unlocked)})")
     
     for card_id in level_rewards:
         if card_id not in current_unlocked:
@@ -378,7 +412,10 @@ def reset_user():
 def debug_user():
     """Debug endpoint to check user state"""
     user_collection = UserCollection.query.filter_by(user_id=current_user.id).first()
-    unlocked_cards = user_collection.unlocked_cards if user_collection else []
+    if user_collection and user_collection.unlocked_cards is not None:
+        unlocked_cards = user_collection.unlocked_cards if isinstance(user_collection.unlocked_cards, list) else []
+    else:
+        unlocked_cards = []
     
     # Get card names for unlocked cards
     card_names = []
