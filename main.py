@@ -99,7 +99,15 @@ def index():
                              level_rewards=LEVEL_REWARDS,
                              card_id_to_name=card_id_to_name)
     else:
-        return render_template('index.html', user=current_user)
+        return render_template('index.html', 
+                             user=current_user,
+                             level=1,
+                             xp=0,
+                             xp_for_next=100,
+                             progress=0,
+                             pending_rewards=[],
+                             level_rewards={},
+                             card_id_to_name={})
 
 @app.route('/game')
 def game():

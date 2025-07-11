@@ -130,7 +130,12 @@ CHARACTERS = [
         "cost": 1,
         "ability": "No ability.",
         "ability_type": "none",
-        "ability_effect": None
+        "ability_effect": {
+            "type": "none", 
+            "value": 0, 
+            "target": "none",
+            "description": "No ability"
+        }
     },
     {
         "id": 11,
