@@ -26,6 +26,11 @@ class MarvelSnapGame {
             modal.hide();
         });
 
+        // Back to menu button in modal
+        document.getElementById('backToMenuBtn').addEventListener('click', () => {
+            window.location.href = '/';
+        });
+
         // Card detail modal close button
         document.getElementById('cardDetailModal').addEventListener('hidden.bs.modal', () => {
             // Reset modal content when closed

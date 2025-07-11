@@ -19,10 +19,14 @@ current_game = None
 
 @app.route('/')
 def index():
+    return render_template('index.html')
+
+@app.route('/game')
+def game():
     global current_game
     if current_game is None:
         current_game = Game()
-    return render_template('index.html', game=current_game, characters=CHARACTERS)
+    return render_template('game.html', game=current_game, characters=CHARACTERS)
 
 @app.route('/api/game-state')
 def get_game_state():
