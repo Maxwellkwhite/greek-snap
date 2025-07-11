@@ -8,7 +8,7 @@ LOCATIONS = [
         "effect_type": "cost_reduction",
         "effect_value": 1,
         "description": "Reduces the cost of all cards played here",
-        "background_image": "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop&crop=center"
+        "background_image": "/static/images/olympus.png"
     },
     {
         "name": "The Underworld", 
