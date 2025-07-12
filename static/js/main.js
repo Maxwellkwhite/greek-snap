@@ -9,7 +9,7 @@ class MarvelSnapGame {
     }
 
     init() {
-        this.showHandSelection();
+        this.startGame();
         this.setupEventListeners();
     }
 
@@ -38,88 +38,18 @@ class MarvelSnapGame {
         });
     }
 
-    async showHandSelection() {
-        try {
-            const response = await fetch('/api/get-user-hands');
-            const data = await response.json();
-            
-            if (data.success) {
-                if (data.hands.length === 0) {
-                    // No hands available
-                    document.getElementById('hands-container').style.display = 'none';
-                    document.getElementById('no-hands-message').style.display = 'block';
-                } else {
-                    // Show hands for selection
-                    this.displayHands(data.hands);
-                }
-                
-                // Show the modal
-                const modal = new bootstrap.Modal(document.getElementById('handSelectionModal'));
-                modal.show();
-            }
-        } catch (error) {
-            console.error('Error loading hands:', error);
-        }
-    }
-    
-    displayHands(hands) {
-        const container = document.getElementById('hands-container');
-        container.innerHTML = '';
-        
-        hands.forEach((hand, index) => {
-            const handElement = this.createHandElement(hand, index);
-            container.appendChild(handElement);
-        });
-    }
-    
-    createHandElement(hand, index) {
-        const handDiv = document.createElement('div');
-        handDiv.className = 'card mb-3 hand-selection-card';
-        handDiv.style.cursor = 'pointer';
-        handDiv.onclick = () => this.selectHand(index);
-        
-        const date = new Date(hand.created_at).toLocaleDateString();
-        
-        handDiv.innerHTML = `
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-start mb-2">
-                    <h5 class="card-title mb-0">${hand.name}</h5>
-                    <small class="text-muted">Created: ${date}</small>
-                </div>
-                <div class="hand-cards-preview mb-2">
-                    ${hand.cards.map(cardId => {
-                        // This will be populated with actual card names when we have the card data
-                        return `<span class="badge bg-primary me-1">Card ${cardId}</span>`;
-                    }).join('')}
-                </div>
-                <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); game.selectHand(${index})">
-                    <i class="fas fa-play me-1"></i>Select This Hand
-                </button>
-            </div>
-        `;
-        
-        return handDiv;
-    }
-    
-    async selectHand(handIndex) {
+    async startGame() {
         try {
             const response = await fetch('/api/new-game', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    hand_index: handIndex
-                })
+                }
             });
             
             const data = await response.json();
             
             if (data.success) {
-                // Hide the hand selection modal
-                const modal = bootstrap.Modal.getInstance(document.getElementById('handSelectionModal'));
-                modal.hide();
-                
                 // Load the game state
                 this.gameState = data.game_state;
                 this.updateUI();
@@ -128,10 +58,14 @@ class MarvelSnapGame {
                 this.showHandSelectedMessage(data.hand_name);
             } else {
                 alert('Error: ' + data.message);
+                // Redirect to index if no hand selected
+                if (data.message.includes('No hand selected') || data.message.includes('select a battle hand')) {
+                    window.location.href = '/';
+                }
             }
         } catch (error) {
-            console.error('Error selecting hand:', error);
-            alert('Error selecting hand. Please try again.');
+            console.error('Error starting game:', error);
+            alert('Error starting game. Please try again.');
         }
     }
     

@@ -117,6 +117,23 @@ def index():
 @login_required
 def game():
     global current_game
+    
+    # Check if user has a current hand selected
+    current_hand_data = current_user.misc2
+    if not current_hand_data:
+        # No hand selected, redirect to index with message
+        flash('Please select a battle hand before starting a game.', 'warning')
+        return redirect(url_for('index'))
+    
+    try:
+        current_hand = json.loads(current_hand_data)
+        if not current_hand or 'cards' not in current_hand:
+            flash('Please select a valid battle hand before starting a game.', 'warning')
+            return redirect(url_for('index'))
+    except (json.JSONDecodeError, TypeError):
+        flash('Please select a valid battle hand before starting a game.', 'warning')
+        return redirect(url_for('index'))
+    
     if current_game is None:
         current_game = Game()
     return render_template('game.html', game=current_game, characters=CHARACTERS, user=current_user)
@@ -568,59 +585,36 @@ def end_turn():
 @login_required
 def new_game():
     global current_game
-    data = request.get_json()
-    hand_index = data.get('hand_index')
     
-    if hand_index is None:
+    # Get the user's current hand
+    current_hand_data = current_user.misc2
+    if not current_hand_data:
         return jsonify({
             "success": False,
-            "message": "Hand index is required."
+            "message": "No hand selected. Please select a battle hand first."
         })
     
-    # Get the selected hand
     try:
-        saved_hands = current_user.misc1
-        if saved_hands:
-            hands_data = json.loads(saved_hands)
-            # Handle both old format (list) and new format (dict)
-            if isinstance(hands_data, list):
-                # Old format - no hands available
-                return jsonify({
-                    "success": False,
-                    "message": "No hands available. Please create a hand first."
-                })
-            elif isinstance(hands_data, dict) and "hands" in hands_data:
-                hands = hands_data["hands"]
-                
-                if 0 <= hand_index < len(hands):
-                    selected_hand = hands[hand_index]
-                    # Create new game with the selected hand
-                    current_game = Game(player_deck_ids=selected_hand["cards"])
-                    
-                    return jsonify({
-                        "success": True,
-                        "game_state": current_game.get_game_state(),
-                        "hand_name": selected_hand["name"]
-                    })
-                else:
-                    return jsonify({
-                        "success": False,
-                        "message": "Invalid hand index."
-                    })
-            else:
-                return jsonify({
-                    "success": False,
-                    "message": "No hands available. Please create a hand first."
-                })
-        else:
+        current_hand = json.loads(current_hand_data)
+        if not current_hand or 'cards' not in current_hand:
             return jsonify({
                 "success": False,
-                "message": "No hands available. Please create a hand first."
+                "message": "Invalid hand data. Please select a valid battle hand."
             })
+        
+        # Create new game with the current hand
+        current_game = Game(player_deck_ids=current_hand["cards"])
+        
+        return jsonify({
+            "success": True,
+            "game_state": current_game.get_game_state(),
+            "hand_name": current_hand["name"]
+        })
+        
     except (json.JSONDecodeError, TypeError):
         return jsonify({
             "success": False,
-            "message": "Error reading hands data."
+            "message": "Error reading hand data. Please select a valid battle hand."
         })
 
 @app.route('/api/save-hand', methods=['POST'])
@@ -822,6 +816,90 @@ def get_user_hands():
         return jsonify({
             "success": True,
             "hands": []
+        })
+
+@app.route('/api/get-current-hand', methods=['GET'])
+@login_required
+def get_current_hand():
+    """Get the user's currently selected hand"""
+    try:
+        # Get current hand from misc2 field
+        current_hand_data = current_user.misc2
+        if current_hand_data:
+            current_hand = json.loads(current_hand_data)
+            return jsonify({
+                "success": True,
+                "current_hand": current_hand
+            })
+        else:
+            return jsonify({
+                "success": True,
+                "current_hand": None
+            })
+    except (json.JSONDecodeError, TypeError):
+        return jsonify({
+            "success": True,
+            "current_hand": None
+        })
+
+@app.route('/api/set-current-hand', methods=['POST'])
+@login_required
+def set_current_hand():
+    """Set the user's current hand for games"""
+    data = request.get_json()
+    hand_index = data.get('hand_index')
+    
+    if hand_index is None:
+        return jsonify({
+            "success": False,
+            "message": "Hand index is required."
+        })
+    
+    try:
+        # Get user's hands
+        saved_hands = current_user.misc1
+        if not saved_hands:
+            return jsonify({
+                "success": False,
+                "message": "No hands found. Please create a hand first."
+            })
+        
+        hands_data = json.loads(saved_hands)
+        # Handle both old format (list) and new format (dict)
+        if isinstance(hands_data, list):
+            # Old format - no hands to select from
+            return jsonify({
+                "success": False,
+                "message": "No hands found. Please create a hand first."
+            })
+        elif isinstance(hands_data, dict) and "hands" in hands_data:
+            hands = hands_data["hands"]
+            
+            if 0 <= hand_index < len(hands):
+                # Set the selected hand as current
+                selected_hand = hands[hand_index]
+                current_user.misc2 = json.dumps(selected_hand)
+                db.session.commit()
+                
+                return jsonify({
+                    "success": True,
+                    "message": f"Hand '{selected_hand['name']}' set as current battle hand.",
+                    "hand_name": selected_hand['name']
+                })
+            else:
+                return jsonify({
+                    "success": False,
+                    "message": "Invalid hand index."
+                })
+        else:
+            return jsonify({
+                "success": False,
+                "message": "No hands found. Please create a hand first."
+            })
+    except (json.JSONDecodeError, TypeError):
+        return jsonify({
+            "success": False,
+            "message": "Error reading hands data."
         })
 
 @app.route('/auth', methods=['GET', 'POST'])
