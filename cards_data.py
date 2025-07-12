@@ -9,6 +9,7 @@ CHARACTERS = [
         "cost": 6,
         "ability": "On Reveal: Destroy one of your cards here.",
         "ability_type": "on_reveal",
+        "image": "/static/images/zues.jpg",
         "ability_effect": {
             "type": "destroy_card", 
             "value": 1, 

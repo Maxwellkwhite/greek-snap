@@ -272,6 +272,15 @@ class MarvelSnapGame {
         
         cardDiv.querySelector('.card-name').textContent = card.name;
         
+        // Handle card image if available
+        const imageElement = cardDiv.querySelector('.card-image');
+        if (card.image) {
+            imageElement.style.backgroundImage = `url('${card.image}')`;
+            imageElement.style.backgroundSize = 'cover';
+            imageElement.style.backgroundPosition = 'center';
+            imageElement.style.backgroundRepeat = 'no-repeat';
+        }
+        
         // Show modified power if available, else base power
         const powerElement = cardDiv.querySelector('.card-power');
         const powerToShow = card.modified_power !== undefined ? card.modified_power : card.power;

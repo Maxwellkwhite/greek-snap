@@ -38,6 +38,22 @@ body {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
+    position: relative;
+    z-index: 1;
+}
+
+.card-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    opacity: 0.3;
+    z-index: 0;
+    border-radius: 8px;
 }
 
 .card-cost {
@@ -55,6 +71,7 @@ body {
     font-weight: bold;
     font-size: 12px;
     transition: all 0.3s ease;
+    z-index: 2;
 }
 
 .card-cost.cost-reduced {
@@ -96,6 +113,7 @@ body {
     font-weight: bold;
     font-size: 12px;
     transition: all 0.3s ease;
+    z-index: 2;
 }
 
 .card-power.modified {
@@ -131,6 +149,8 @@ body {
     margin-bottom: 5px;
     line-height: 1.2;
     color: #2c3e50;
+    position: relative;
+    z-index: 2;
 }
 
 .card-ability {
@@ -140,6 +160,8 @@ body {
     margin-bottom: 20px;
     color: #7f8c8d;
     padding: 0 5px;
+    position: relative;
+    z-index: 2;
 }
 
 /* Game Board Layout */

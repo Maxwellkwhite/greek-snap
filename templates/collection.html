@@ -79,6 +79,22 @@
             display: flex;
             flex-direction: column;
             justify-content: space-between;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .card-image {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            opacity: 0.3;
+            z-index: 0;
+            border-radius: 12px;
         }
         
         .card-cost {
@@ -96,6 +112,7 @@
             font-weight: bold;
             font-size: 16px;
             transition: all 0.3s ease;
+            z-index: 2;
         }
         
         .card-power {
@@ -113,6 +130,7 @@
             font-weight: bold;
             font-size: 16px;
             transition: all 0.3s ease;
+            z-index: 2;
         }
         
         .card-name {
@@ -123,6 +141,8 @@
             margin-bottom: 8px;
             line-height: 1.2;
             color: #2c3e50;
+            position: relative;
+            z-index: 2;
         }
         
         .card-ability {
@@ -132,6 +152,8 @@
             margin-bottom: 30px;
             color: #7f8c8d;
             padding: 0 8px;
+            position: relative;
+            z-index: 2;
         }
         
         .lock-overlay {
@@ -323,6 +345,9 @@
             <div class="card-grid">
                 {% for card in owned_cards %}
                 <div class="card-item unlocked">
+                    {% if card.image %}
+                    <div class="card-image" style="background-image: url('{{ card.image }}')"></div>
+                    {% endif %}
                     <div class="card-body">
                         <div class="card-cost">{{ card.cost }}</div>
                         <div class="card-name">{{ card.name }}</div>
@@ -346,6 +371,9 @@
             <div class="card-grid">
                 {% for card in all_cards %}
                 <div class="card-item {% if card.unlocked %}unlocked{% else %}locked{% endif %}">
+                    {% if card.image %}
+                    <div class="card-image" style="background-image: url('{{ card.image }}')"></div>
+                    {% endif %}
                     <div class="card-body">
                         <div class="card-cost">{{ card.cost }}</div>
                         <div class="card-name">{{ card.name }}</div>
