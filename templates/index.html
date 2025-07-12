@@ -192,6 +192,215 @@
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
         }
+        
+        /* Level Badge Styling */
+        .level-badge {
+            background: linear-gradient(45deg, #f39c12, #e67e22);
+            color: white;
+            border-radius: 50%;
+            width: 80px;
+            height: 80px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .level-number {
+            font-size: 1.8rem;
+            font-weight: bold;
+            line-height: 1;
+        }
+        
+        .level-badge small {
+            font-size: 0.7rem;
+            opacity: 0.9;
+        }
+        
+        /* Modal Content Styling */
+        .current-level-section .card {
+            border: 2px solid #007bff;
+        }
+        
+        .upcoming-levels-section .card {
+            transition: all 0.3s ease;
+        }
+        
+        .upcoming-levels-section .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .rewards-section ul li {
+            font-size: 0.9rem;
+            margin-bottom: 0.25rem;
+        }
+        
+        .xp-progress-section .progress {
+            background-color: rgba(0, 0, 0, 0.1);
+        }
+        
+        /* Summary Section Styling */
+        .stat-item {
+            padding: 1rem;
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            line-height: 1;
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            color: #6c757d;
+            margin-top: 0.5rem;
+        }
+        
+        .summary-section .card {
+            border: 2px solid #17a2b8;
+        }
+        
+        /* Level Cards Styling */
+        .level-cards-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .level-card {
+            background: white;
+            border-radius: 12px;
+            padding: 0.75rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            border-left: 4px solid #6c757d;
+        }
+        
+        .level-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+        }
+        
+        .level-card-pending {
+            border-left-color: #ffc107;
+            background: linear-gradient(135deg, #fff8e1, #fff3cd);
+        }
+        
+        .level-card-claimed {
+            border-left-color: #28a745;
+            background: linear-gradient(135deg, #f8fff9, #e8f5e8);
+        }
+        
+        .level-card-locked {
+            border-left-color: #17a2b8;
+            background: linear-gradient(135deg, #f0f8ff, #e6f3ff);
+        }
+        
+        .level-card-current {
+            border-left-color: #007bff;
+            background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+            border: 2px solid #007bff;
+            box-shadow: 0 4px 12px rgba(0, 123, 255, 0.2);
+        }
+        
+        .level-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        
+        .level-info {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .level-number {
+            font-weight: bold;
+            font-size: 1rem;
+            color: #2c3e50;
+        }
+        
+        .level-xp {
+            font-size: 0.8rem;
+            color: #6c757d;
+        }
+        
+        .level-status {
+            padding: 0.2rem 0.6rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        
+        .level-status.pending {
+            background: #ffc107;
+            color: #212529;
+        }
+        
+        .level-status.claimed {
+            background: #28a745;
+            color: white;
+        }
+        
+        .level-status.locked {
+            background: #17a2b8;
+            color: white;
+        }
+        
+        .level-status.no-rewards {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .level-card-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .reward-item {
+            font-size: 0.8rem;
+            color: #495057;
+            display: flex;
+            align-items: center;
+            background: rgba(255, 193, 7, 0.1);
+            padding: 0.2rem 0.5rem;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 193, 7, 0.3);
+        }
+        
+        .reward-item i {
+            color: #ffc107;
+            margin-right: 0.5rem;
+        }
+        
+        .claim-btn {
+            background: linear-gradient(45deg, #ffc107, #ff8c00);
+            border: none;
+            color: white;
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .claim-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(255, 193, 7, 0.4);
+        }
+        
+        .no-rewards-text {
+            font-size: 0.85rem;
+            color: #6c757d;
+            font-style: italic;
+        }
     </style>
 </head>
 <body>
@@ -252,10 +461,12 @@
 
     <!-- Level Rewards Modal -->
     <div class="modal fade" id="levelRewardsModal" tabindex="-1">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Level Rewards</h5>
+                    <h5 class="modal-title">
+                        <i class="fas fa-star me-2"></i>Level Progression & Rewards
+                    </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body" id="levelRewardsContent">
@@ -268,60 +479,91 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         function showLevelRewards() {
+            console.log('showLevelRewards function called');
+            
             const modal = new bootstrap.Modal(document.getElementById('levelRewardsModal'));
             const content = document.getElementById('levelRewardsContent');
             
-            // Get pending rewards data from the page
+            // Get data from the page
             const pendingRewards = {{ pending_rewards|tojson }};
             const userLevel = {{ level }};
+            const userXP = {{ xp }};
             const cardIdToName = {{ card_id_to_name|tojson }};
+            const levelRewards = {{ level_rewards|tojson }};
+            const levelXPRequirements = {{ level_xp_requirements|tojson }};
+            const unlockedCards = {{ unlocked_cards|tojson }};
             
-            let html = '<div class="row">';
+            console.log('Data loaded:', {
+                pendingRewards,
+                userLevel,
+                userXP,
+                cardIdToName,
+                levelRewards,
+                levelXPRequirements
+            });
             
-            // Show all levels up to user's current level
-            for (let level = 1; level <= userLevel; level++) {
-                const levelRewards = {{ level_rewards|tojson }};
+            let html = '';
+            
+            // All Levels Section
+            html += '<div class="all-levels-section">';
+            html += '<div class="level-cards-container">';
+            
+            // Show current level and next 4 levels (or fewer if max level reached)
+            const maxLevelsToShow = 5;
+            const totalLevels = Object.keys(levelXPRequirements).length;
+            const levelsToShow = Math.min(maxLevelsToShow, totalLevels - userLevel + 1);
+            
+            for (let i = 0; i < levelsToShow; i++) {
+                const level = userLevel + i;
+                const levelXP = levelXPRequirements[level];
                 const rewards = levelRewards[level] || [];
                 const isPending = pendingRewards.some(r => r.level === level);
-                const isClaimed = !isPending && rewards.length > 0;
+                const isClaimed = rewards.length > 0 && rewards.every(cardId => unlockedCards.includes(cardId));
+                const isCurrentLevel = level === userLevel;
+                const xpNeeded = levelXP - userXP;
                 
-                html += '<div class="col-md-6 mb-3">';
-                html += '<div class="card ' + (isPending ? 'border-warning' : isClaimed ? 'border-success' : 'border-secondary') + '">';
-                html += '<div class="card-header d-flex justify-content-between align-items-center">';
-                html += '<strong>Level ' + level + '</strong>';
+                html += '<div class="level-card ' + (isCurrentLevel ? 'level-card-current' : isPending ? 'level-card-pending' : isClaimed ? 'level-card-claimed' : 'level-card-locked') + '">';
+                html += '<div class="level-card-header">';
+                html += '<div class="level-info">';
+                html += '<div class="level-number">' + (isCurrentLevel ? '<i class="fas fa-crown me-1"></i>' : '') + 'Level ' + level + '</div>';
+                html += '<div class="level-xp">' + levelXP + ' XP' + (isCurrentLevel ? ' (Current)' : '') + '</div>';
+                html += '</div>';
                 
                 if (isPending) {
-                    html += '<span class="badge bg-warning">Claim Available</span>';
+                    html += '<span class="level-status pending"><i class="fas fa-gift me-1"></i>Claim</span>';
                 } else if (isClaimed) {
-                    html += '<span class="badge bg-success">Claimed</span>';
+                    html += '<span class="level-status claimed"><i class="fas fa-check me-1"></i>Claimed</span>';
+                } else if (rewards.length > 0) {
+                    html += '<span class="level-status locked"><i class="fas fa-lock me-1"></i>Locked</span>';
                 } else {
-                    html += '<span class="badge bg-secondary">No Rewards</span>';
+                    html += '<span class="level-status no-rewards">No Rewards</span>';
                 }
                 
                 html += '</div>';
-                html += '<div class="card-body">';
+                html += '<div class="level-card-content">';
                 
+                // Rewards
                 if (rewards.length > 0) {
-                    html += '<p class="mb-2"><strong>Rewards:</strong></p>';
-                    html += '<ul class="list-unstyled">';
                     rewards.forEach(cardId => {
                         const cardName = cardIdToName[cardId] || 'Unknown Card';
-                        html += '<li><i class="fas fa-gift me-2"></i>' + cardName + ' Card</li>';
+                        html += '<div class="reward-item"><i class="fas fa-gift me-1"></i>' + cardName + '</div>';
                     });
-                    html += '</ul>';
                     
                     if (isPending) {
-                        html += '<button class="btn btn-warning btn-sm" onclick="claimLevelReward(' + level + ')">';
+                        html += '<button class="claim-btn" onclick="claimLevelReward(' + level + ')">';
                         html += '<i class="fas fa-gift me-1"></i>Claim Rewards</button>';
                     }
                 } else {
-                    html += '<p class="text-muted">No rewards for this level</p>';
+                    html += '<div class="no-rewards-text">No rewards for this level</div>';
                 }
                 
-                html += '</div></div></div>';
+                html += '</div>';
+                html += '</div>';
             }
             
             html += '</div>';
+            html += '</div>';
+            
             content.innerHTML = html;
             modal.show();
         }

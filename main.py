@@ -84,7 +84,7 @@ def index():
         pending_rewards = XPSystem.get_pending_rewards(current_user.xp, unlocked_cards)
         
         # Get all level rewards for display
-        from xp_system import LEVEL_REWARDS
+        from xp_system import LEVEL_REWARDS, LEVEL_XP_REQUIREMENTS
         
         # Create a mapping of card IDs to names for display
         card_id_to_name = {card['id']: card['name'] for card in CHARACTERS}
@@ -97,7 +97,9 @@ def index():
                              progress=progress,
                              pending_rewards=pending_rewards,
                              level_rewards=LEVEL_REWARDS,
-                             card_id_to_name=card_id_to_name)
+                             level_xp_requirements=LEVEL_XP_REQUIREMENTS,
+                             card_id_to_name=card_id_to_name,
+                             unlocked_cards=unlocked_cards)
     else:
         return render_template('index.html', 
                              user=current_user,
@@ -107,7 +109,9 @@ def index():
                              progress=0,
                              pending_rewards=[],
                              level_rewards={},
-                             card_id_to_name={})
+                             level_xp_requirements={},
+                             card_id_to_name={},
+                             unlocked_cards=[])
 
 @app.route('/game')
 @login_required
