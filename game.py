@@ -4,13 +4,32 @@ from locations_data import LOCATIONS
 from effect_system import EffectHandler
 
 class Game:
-    def __init__(self):
+    def __init__(self, player_deck_ids=None):
         self.turn = 1
         self.max_turns = 5
         self.player_hand = []
         self.opponent_hand = []
-        self.player_deck = CHARACTERS.copy()
+        
+        # Set up player deck based on selected hand
+        if player_deck_ids:
+            # Create deck from selected card IDs (only one copy of each)
+            self.player_deck = []
+            for card_id in player_deck_ids:
+                card = next((c for c in CHARACTERS if c['id'] == card_id), None)
+                if card:
+                    self.player_deck.append(card)
+            # If we have fewer than 10 cards, add some random cards to fill the deck
+            if len(self.player_deck) < 10:
+                remaining_cards = [c for c in CHARACTERS if c['id'] not in player_deck_ids]
+                random.shuffle(remaining_cards)
+                self.player_deck.extend(remaining_cards[:10 - len(self.player_deck)])
+        else:
+            # Default deck (all cards)
+            self.player_deck = CHARACTERS.copy()
+        
+        # Opponent always uses all cards
         self.opponent_deck = CHARACTERS.copy()
+        
         self.locations = []
         self.player_energy = 1
         self.opponent_energy = 1

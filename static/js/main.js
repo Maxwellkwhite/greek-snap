@@ -9,7 +9,7 @@ class MarvelSnapGame {
     }
 
     init() {
-        this.loadGameState();
+        this.showHandSelection();
         this.setupEventListeners();
     }
 
@@ -38,6 +38,121 @@ class MarvelSnapGame {
         });
     }
 
+    async showHandSelection() {
+        try {
+            const response = await fetch('/api/get-user-hands');
+            const data = await response.json();
+            
+            if (data.success) {
+                if (data.hands.length === 0) {
+                    // No hands available
+                    document.getElementById('hands-container').style.display = 'none';
+                    document.getElementById('no-hands-message').style.display = 'block';
+                } else {
+                    // Show hands for selection
+                    this.displayHands(data.hands);
+                }
+                
+                // Show the modal
+                const modal = new bootstrap.Modal(document.getElementById('handSelectionModal'));
+                modal.show();
+            }
+        } catch (error) {
+            console.error('Error loading hands:', error);
+        }
+    }
+    
+    displayHands(hands) {
+        const container = document.getElementById('hands-container');
+        container.innerHTML = '';
+        
+        hands.forEach((hand, index) => {
+            const handElement = this.createHandElement(hand, index);
+            container.appendChild(handElement);
+        });
+    }
+    
+    createHandElement(hand, index) {
+        const handDiv = document.createElement('div');
+        handDiv.className = 'card mb-3 hand-selection-card';
+        handDiv.style.cursor = 'pointer';
+        handDiv.onclick = () => this.selectHand(index);
+        
+        const date = new Date(hand.created_at).toLocaleDateString();
+        
+        handDiv.innerHTML = `
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <h5 class="card-title mb-0">${hand.name}</h5>
+                    <small class="text-muted">Created: ${date}</small>
+                </div>
+                <div class="hand-cards-preview mb-2">
+                    ${hand.cards.map(cardId => {
+                        // This will be populated with actual card names when we have the card data
+                        return `<span class="badge bg-primary me-1">Card ${cardId}</span>`;
+                    }).join('')}
+                </div>
+                <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); game.selectHand(${index})">
+                    <i class="fas fa-play me-1"></i>Select This Hand
+                </button>
+            </div>
+        `;
+        
+        return handDiv;
+    }
+    
+    async selectHand(handIndex) {
+        try {
+            const response = await fetch('/api/new-game', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    hand_index: handIndex
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Hide the hand selection modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('handSelectionModal'));
+                modal.hide();
+                
+                // Load the game state
+                this.gameState = data.game_state;
+                this.updateUI();
+                
+                // Show success message
+                this.showHandSelectedMessage(data.hand_name);
+            } else {
+                alert('Error: ' + data.message);
+            }
+        } catch (error) {
+            console.error('Error selecting hand:', error);
+            alert('Error selecting hand. Please try again.');
+        }
+    }
+    
+    showHandSelectedMessage(handName) {
+        // Create a temporary notification
+        const notification = document.createElement('div');
+        notification.className = 'alert alert-success position-fixed';
+        notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+        notification.innerHTML = `
+            <i class="fas fa-check-circle me-2"></i>
+            Playing with hand: <strong>${handName}</strong>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // Remove after 3 seconds
+        setTimeout(() => {
+            notification.remove();
+        }, 3000);
+    }
+    
     async loadGameState() {
         try {
             const response = await fetch('/api/game-state');
@@ -496,25 +611,8 @@ class MarvelSnapGame {
     }
 
     async newGame() {
-        try {
-            const response = await fetch('/api/new-game', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                }
-            });
-
-            const result = await response.json();
-            
-            if (result.success) {
-                this.gameState = result.game_state;
-                this.selectedCard = null;
-                this.updateUI();
-            }
-        } catch (error) {
-            console.error('Error starting new game:', error);
-            alert('Error starting new game. Please try again.');
-        }
+        // Show hand selection for new game
+        this.showHandSelection();
     }
 
     async showGameOver() {
