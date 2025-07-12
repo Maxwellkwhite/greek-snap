@@ -619,19 +619,45 @@
             html += '<div class="all-levels-section">';
             html += '<div class="level-cards-container">';
             
-            // Show current level and next 4 levels (or fewer if max level reached)
+            // Show levels, prioritizing unclaimed rewards
             const maxLevelsToShow = 5;
             const totalLevels = Object.keys(levelXPRequirements).length;
-            const levelsToShow = Math.min(maxLevelsToShow, totalLevels - userLevel + 1);
             
-            for (let i = 0; i < levelsToShow; i++) {
-                const level = userLevel + i;
+            // Create a list of levels to show
+            const levelsToShow = [];
+            
+            // First, add all unclaimed levels
+            pendingRewards.forEach(reward => {
+                if (!levelsToShow.includes(reward.level)) {
+                    levelsToShow.push(reward.level);
+                }
+            });
+            
+            // Then add current level if not already included
+            if (!levelsToShow.includes(userLevel)) {
+                levelsToShow.push(userLevel);
+            }
+            
+            // Then add next few levels to fill up to maxLevelsToShow
+            let nextLevel = userLevel + 1;
+            while (levelsToShow.length < maxLevelsToShow && nextLevel <= totalLevels) {
+                if (!levelsToShow.includes(nextLevel)) {
+                    levelsToShow.push(nextLevel);
+                }
+                nextLevel++;
+            }
+            
+            // Sort levels to show them in order
+            levelsToShow.sort((a, b) => a - b);
+            
+            // Generate HTML for each level
+            for (let i = 0; i < levelsToShow.length; i++) {
+                const level = levelsToShow[i];
                 const levelXP = levelXPRequirements[level];
                 const rewards = levelRewards[level] || [];
                 const isPending = pendingRewards.some(r => r.level === level);
                 const isClaimed = rewards.length > 0 && rewards.every(cardId => unlockedCards.includes(cardId));
                 const isCurrentLevel = level === userLevel;
-                const xpNeeded = levelXP - userXP;
                 
                 html += '<div class="level-card ' + (isCurrentLevel ? 'level-card-current' : isPending ? 'level-card-pending' : isClaimed ? 'level-card-claimed' : 'level-card-locked') + '">';
                 html += '<div class="level-card-header">';
