@@ -146,6 +146,38 @@ def collection():
                          owned_cards=owned_cards, 
                          user=current_user)
 
+@app.route('/create-hand')
+@login_required
+def create_hand():
+    """Page where users can select 10 cards to create their hand"""
+    # Get or create user collection
+    user_collection = UserCollection.query.filter_by(user_id=current_user.id).first()
+    if not user_collection:
+        user_collection = UserCollection(user_id=current_user.id, unlocked_cards=[])
+        db.session.add(user_collection)
+        db.session.commit()
+    else:
+        # Ensure the unlocked_cards field is properly initialized as a list
+        if user_collection.unlocked_cards is None:
+            user_collection.unlocked_cards = []
+            db.session.commit()
+    
+    # Get all cards and mark which ones are unlocked
+    all_cards = CHARACTERS.copy()
+    unlocked_cards = user_collection.unlocked_cards if isinstance(user_collection.unlocked_cards, list) else []
+    unlocked_card_ids = set(unlocked_cards)
+    
+    for card in all_cards:
+        card['unlocked'] = card['id'] in unlocked_card_ids
+    
+    # Separate owned and all cards
+    owned_cards = [card for card in all_cards if card['unlocked']]
+    
+    return render_template('create_hand.html', 
+                         all_cards=all_cards, 
+                         owned_cards=owned_cards, 
+                         user=current_user)
+
 @app.route('/api/unlock-card', methods=['POST'])
 @login_required
 def unlock_card():
@@ -378,22 +410,27 @@ def reset_user():
         current_user.xp = 0
         current_user.last_daily_win = None
         
-        # Reset collection
+        # Reset hands data
+        current_user.misc1 = None
+        
+        # Reset collection to cards 1-10
         user_collection = UserCollection.query.filter_by(user_id=current_user.id).first()
         if user_collection:
-            # Clear the collection properly
-            user_collection.unlocked_cards = []
+            # Reset to cards 1-10
+            initial_cards = list(range(1, 11))  # Cards 1-10
+            user_collection.unlocked_cards = initial_cards
             user_collection.date_updated = func.now()
             db.session.commit()
             db.session.refresh(user_collection)
-            print(f"DEBUG: Reset - Cleared collection for user {current_user.id}")
+            print(f"DEBUG: Reset - Reset collection for user {current_user.id} to cards 1-10")
             print(f"DEBUG: Reset - Collection now has {len(user_collection.unlocked_cards)} cards")
         else:
-            # Create new collection if it doesn't exist
-            user_collection = UserCollection(user_id=current_user.id, unlocked_cards=[])
+            # Create new collection with cards 1-10 if it doesn't exist
+            initial_cards = list(range(1, 11))  # Cards 1-10
+            user_collection = UserCollection(user_id=current_user.id, unlocked_cards=initial_cards)
             db.session.add(user_collection)
             db.session.commit()
-            print(f"DEBUG: Reset - Created new empty collection for user {current_user.id}")
+            print(f"DEBUG: Reset - Created new collection with cards 1-10 for user {current_user.id}")
         
         # Verify the reset worked
         db.session.refresh(user_collection)
@@ -402,10 +439,10 @@ def reset_user():
         
         return jsonify({
             "success": True,
-            "message": "User data reset successfully! All XP and cards have been cleared.",
+            "message": "User data reset successfully! You now have cards 1-10 in your collection and all hands have been cleared.",
             "new_xp": 0,
             "new_level": 1,
-            "unlocked_cards": []
+            "unlocked_cards": user_collection.unlocked_cards
         })
         
     except Exception as e:
@@ -533,6 +570,171 @@ def new_game():
         "game_state": current_game.get_game_state()
     })
 
+@app.route('/api/save-hand', methods=['POST'])
+@login_required
+def save_hand():
+    """Save the user's selected hand of 10 cards"""
+    data = request.get_json()
+    selected_cards = data.get('selected_cards', [])
+    
+    if len(selected_cards) != 10:
+        return jsonify({
+            "success": False,
+            "message": "You must select exactly 10 cards for your hand."
+        })
+    
+    # Verify all selected cards are in user's collection
+    user_collection = UserCollection.query.filter_by(user_id=current_user.id).first()
+    if not user_collection:
+        return jsonify({
+            "success": False,
+            "message": "User collection not found."
+        })
+    
+    unlocked_cards = user_collection.unlocked_cards if isinstance(user_collection.unlocked_cards, list) else []
+    unlocked_card_ids = set(unlocked_cards)
+    
+    for card_id in selected_cards:
+        if card_id not in unlocked_card_ids:
+            return jsonify({
+                "success": False,
+                "message": f"Card ID {card_id} is not in your collection."
+            })
+    
+    # Save the hand (we'll store it in the user's misc1 field for now)
+    # Format: {"hands": [{"name": "Hand 1", "cards": [1,2,3...]}, ...]}
+    try:
+        existing_data = json.loads(current_user.misc1) if current_user.misc1 else None
+        # Handle both old format (list) and new format (dict)
+        if isinstance(existing_data, list):
+            # Convert old format to new format
+            existing_hands = {"hands": []}
+        elif isinstance(existing_data, dict) and "hands" in existing_data:
+            existing_hands = existing_data
+        else:
+            existing_hands = {"hands": []}
+    except (json.JSONDecodeError, TypeError):
+        existing_hands = {"hands": []}
+    
+    # Add new hand
+    hand_name = data.get('hand_name', f'Hand {len(existing_hands["hands"]) + 1}')
+    new_hand = {
+        "name": hand_name,
+        "cards": selected_cards,
+        "created_at": datetime.now().isoformat()
+    }
+    
+    existing_hands["hands"].append(new_hand)
+    
+    # Keep only the 3 most recent hands
+    if len(existing_hands["hands"]) > 3:
+        existing_hands["hands"] = existing_hands["hands"][-3:]
+    
+    current_user.misc1 = json.dumps(existing_hands)
+    db.session.commit()
+    
+    return jsonify({
+        "success": True,
+        "message": "Hand saved successfully!",
+        "selected_cards": selected_cards
+    })
+
+@app.route('/api/get-hand', methods=['GET'])
+@login_required
+def get_hand():
+    """Get the user's saved hands"""
+    try:
+        saved_hands = current_user.misc1
+        if saved_hands:
+            hands_data = json.loads(saved_hands)
+            # Handle both old format (list) and new format (dict)
+            if isinstance(hands_data, list):
+                # Old format - return empty hands list
+                return jsonify({
+                    "success": True,
+                    "hands": []
+                })
+            elif isinstance(hands_data, dict) and "hands" in hands_data:
+                return jsonify({
+                    "success": True,
+                    "hands": hands_data["hands"]
+                })
+            else:
+                return jsonify({
+                    "success": True,
+                    "hands": []
+                })
+        else:
+            return jsonify({
+                "success": True,
+                "hands": []
+            })
+    except (json.JSONDecodeError, TypeError):
+        return jsonify({
+            "success": True,
+            "hands": []
+        })
+
+@app.route('/api/delete-hand', methods=['POST'])
+@login_required
+def delete_hand():
+    """Delete a specific hand by index"""
+    data = request.get_json()
+    hand_index = data.get('hand_index')
+    
+    if hand_index is None:
+        return jsonify({
+            "success": False,
+            "message": "Hand index is required."
+        })
+    
+    try:
+        saved_hands = current_user.misc1
+        if saved_hands:
+            hands_data = json.loads(saved_hands)
+            # Handle both old format (list) and new format (dict)
+            if isinstance(hands_data, list):
+                # Old format - no hands to delete
+                return jsonify({
+                    "success": False,
+                    "message": "No hands found."
+                })
+            elif isinstance(hands_data, dict) and "hands" in hands_data:
+                hands = hands_data["hands"]
+                
+                if 0 <= hand_index < len(hands):
+                    # Remove the hand at the specified index
+                    deleted_hand = hands.pop(hand_index)
+                    hands_data["hands"] = hands
+                    current_user.misc1 = json.dumps(hands_data)
+                    db.session.commit()
+                    
+                    return jsonify({
+                        "success": True,
+                        "message": f"Hand '{deleted_hand['name']}' deleted successfully.",
+                        "hands": hands
+                    })
+                else:
+                    return jsonify({
+                        "success": False,
+                        "message": "Invalid hand index."
+                    })
+            else:
+                return jsonify({
+                    "success": False,
+                    "message": "No hands found."
+                })
+        else:
+            return jsonify({
+                "success": False,
+                "message": "No hands found."
+            })
+    except (json.JSONDecodeError, TypeError):
+        return jsonify({
+            "success": False,
+            "message": "Error reading hands data."
+        })
+
 @app.route('/auth', methods=['GET', 'POST'])
 def auth():
     if request.method == 'POST':
@@ -590,9 +792,19 @@ def register():
                 )
                 db.session.add(new_user)
                 db.session.commit()
+                
+                # Create user collection with cards 1-10 unlocked
+                initial_cards = list(range(1, 11))  # Cards 1-10
+                user_collection = UserCollection(
+                    user_id=new_user.id,
+                    unlocked_cards=initial_cards
+                )
+                db.session.add(user_collection)
+                db.session.commit()
+                
                 login_user(new_user)
                 session.pop('auth_email', None)
-                flash('Account created successfully!', 'success')
+                flash('Account created successfully! You now have cards 1-10 in your collection!', 'success')
                 return redirect(url_for('index'))
             else:
                 flash('Passwords do not match', 'error')

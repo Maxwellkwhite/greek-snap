@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Greek Snap - Manage Hands</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .hands-container {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 2rem 0;
+        }
+        .hands-manager {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+        .hand-card {
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+        }
+        .hand-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+        }
+        .hand-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .hand-name {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #2c3e50;
+            margin: 0;
+        }
+        .hand-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .btn-edit, .btn-delete {
+            padding: 0.25rem 0.5rem;
+            border-radius: 5px;
+            border: none;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .btn-edit {
+            background: #007bff;
+            color: white;
+        }
+        .btn-edit:hover {
+            background: #0056b3;
+        }
+        .btn-delete {
+            background: #dc3545;
+            color: white;
+        }
+        .btn-delete:hover {
+            background: #c82333;
+        }
+        .hand-cards {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .card-tag {
+            background: #28a745;
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 15px;
+            font-size: 0.8rem;
+        }
+        .hand-date {
+            font-size: 0.8rem;
+            color: #6c757d;
+            font-style: italic;
+        }
+        .create-new-hand {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            border: 2px dashed #28a745;
+            border-radius: 15px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: white;
+        }
+        .create-new-hand:hover {
+            background: linear-gradient(45deg, #20c997, #28a745);
+            transform: translateY(-2px);
+        }
+        .create-new-hand.disabled {
+            background: #6c757d;
+            border-color: #6c757d;
+            cursor: not-allowed;
+        }
+        .create-new-hand.disabled:hover {
+            transform: none;
+        }
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .card-item {
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 15px;
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        .card-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+        }
+        .card-item.selected {
+            border-color: #28a745;
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+        }
+        .card-name {
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+            color: #2c3e50;
+        }
+        .card-stats {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+        }
+        .card-power, .card-cost {
+            background: #f8f9fa;
+            padding: 0.25rem 0.5rem;
+            border-radius: 5px;
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+        .card-power {
+            color: #dc3545;
+        }
+        .card-cost {
+            color: #007bff;
+        }
+        .card-ability {
+            font-size: 0.8rem;
+            color: #6c757d;
+            font-style: italic;
+        }
+        .selection-counter {
+            background: #007bff;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 25px;
+            font-weight: bold;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+        .btn-save-hand {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            border: none;
+            padding: 0.75rem 2rem;
+            font-size: 1.1rem;
+            border-radius: 50px;
+            color: white;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        .btn-save-hand:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+            color: white;
+        }
+        .btn-save-hand:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .nav-buttons {
+            margin-bottom: 2rem;
+        }
+        .btn-nav {
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 25px;
+            color: #2c3e50;
+            text-decoration: none;
+            margin-right: 1rem;
+            transition: all 0.3s ease;
+        }
+        .btn-nav:hover {
+            background: white;
+            color: #2c3e50;
+            transform: translateY(-2px);
+        }
+        .hand-builder {
+            display: none;
+        }
+        .hand-builder.active {
+            display: block;
+        }
+        .hands-list {
+            display: block;
+        }
+        .hands-list.hidden {
+            display: none;
+        }
+        .hand-name-input {
+            width: 100%;
+            padding: 0.5rem;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+            font-size: 1rem;
+        }
+        .hand-name-input:focus {
+            border-color: #007bff;
+            outline: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="hands-container">
+        <div class="container">
+            <div class="nav-buttons">
+                <a href="{{ url_for('index') }}" class="btn btn-nav">
+                    <i class="fas fa-home me-1"></i>Home
+                </a>
+                <a href="{{ url_for('collection') }}" class="btn btn-nav">
+                    <i class="fas fa-book me-1"></i>Collection
+                </a>
+            </div>
+            
+            <!-- Hands List View -->
+            <div class="hands-manager hands-list" id="hands-list">
+                <h1 class="text-center mb-4">
+                    <i class="fas fa-hand-paper me-2"></i>My Hands
+                </h1>
+                <p class="text-center text-muted mb-4">
+                    Manage your saved hands (up to 3)
+                </p>
+                
+                <div id="hands-container">
+                    <!-- Hands will be loaded here -->
+                </div>
+                
+                <div class="create-new-hand" id="create-new-hand" onclick="showHandBuilder()">
+                    <i class="fas fa-plus fa-2x mb-2"></i>
+                    <h4>Create New Hand</h4>
+                    <p>Select 10 cards to build a new hand</p>
+                </div>
+            </div>
+            
+            <!-- Hand Builder View -->
+            <div class="hands-manager hand-builder" id="hand-builder">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h1>
+                        <i class="fas fa-hand-paper me-2"></i>Create New Hand
+                    </h1>
+                    <button class="btn btn-secondary" onclick="showHandsList()">
+                        <i class="fas fa-arrow-left me-1"></i>Back to Hands
+                    </button>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="hand-name-input" class="form-label">Hand Name:</label>
+                    <input type="text" id="hand-name-input" class="hand-name-input" placeholder="Enter a name for your hand..." maxlength="50">
+                </div>
+                
+                <div class="selection-counter">
+                    <span id="selected-count">0</span> / 10 cards selected
+                </div>
+                
+                <div class="text-center mb-4">
+                    <button id="save-hand-btn" class="btn btn-save-hand" disabled>
+                        <i class="fas fa-save me-2"></i>Save Hand
+                    </button>
+                </div>
+                
+                <div class="card-grid">
+                    {% for card in owned_cards %}
+                    <div class="card-item" data-card-id="{{ card.id }}" onclick="toggleCard({{ card.id }})">
+                        <div class="card-name">{{ card.name }}</div>
+                        <div class="card-stats">
+                            <span class="card-power">⚔️ {{ card.power }}</span>
+                            <span class="card-cost">💎 {{ card.cost }}</span>
+                        </div>
+                        <div class="card-ability">{{ card.ability }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                {% if not owned_cards %}
+                <div class="text-center text-muted">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    You don't have any cards in your collection yet. 
+                    <a href="{{ url_for('collection') }}">View your collection</a> to see available cards.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let selectedCards = [];
+        let hands = [];
+        
+        // Load hands on page load
+        window.addEventListener('load', function() {
+            loadHands();
+        });
+        
+        function loadHands() {
+            fetch('/api/get-hand')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        hands = data.hands;
+                        updateHandsDisplay();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading hands:', error);
+                });
+        }
+        
+        function updateHandsDisplay() {
+            const container = document.getElementById('hands-container');
+            const createButton = document.getElementById('create-new-hand');
+            
+            container.innerHTML = '';
+            
+            if (hands.length === 0) {
+                container.innerHTML = '<div class="text-center text-muted mb-4"><p>No hands created yet. Create your first hand!</p></div>';
+            } else {
+                hands.forEach((hand, index) => {
+                    const handCard = createHandCard(hand, index);
+                    container.appendChild(handCard);
+                });
+            }
+            
+            // Disable create button if max hands reached
+            if (hands.length >= 3) {
+                createButton.classList.add('disabled');
+                createButton.innerHTML = '<i class="fas fa-ban fa-2x mb-2"></i><h4>Maximum Hands Reached</h4><p>You can only have 3 hands. Delete one to create a new hand.</p>';
+            } else {
+                createButton.classList.remove('disabled');
+                createButton.innerHTML = '<i class="fas fa-plus fa-2x mb-2"></i><h4>Create New Hand</h4><p>Select 10 cards to build a new hand</p>';
+            }
+        }
+        
+        function createHandCard(hand, index) {
+            const card = document.createElement('div');
+            card.className = 'hand-card';
+            
+            const date = new Date(hand.created_at).toLocaleDateString();
+            
+            card.innerHTML = `
+                <div class="hand-header">
+                    <h3 class="hand-name">${hand.name}</h3>
+                    <div class="hand-actions">
+                        <button class="btn-edit" onclick="editHand(${index})">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                        <button class="btn-delete" onclick="deleteHand(${index})">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    </div>
+                </div>
+                <div class="hand-cards">
+                    ${hand.cards.map(cardId => {
+                        const cardElement = document.querySelector(`[data-card-id="${cardId}"]`);
+                        if (cardElement) {
+                            const cardName = cardElement.querySelector('.card-name').textContent;
+                            return `<span class="card-tag">${cardName}</span>`;
+                        }
+                        return `<span class="card-tag">Card ${cardId}</span>`;
+                    }).join('')}
+                </div>
+                <div class="hand-date">Created: ${date}</div>
+            `;
+            
+            return card;
+        }
+        
+        function deleteHand(index) {
+            if (confirm('Are you sure you want to delete this hand?')) {
+                fetch('/api/delete-hand', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ hand_index: index })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(data.message);
+                        loadHands();
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error deleting hand:', error);
+                    alert('Error deleting hand. Please try again.');
+                });
+            }
+        }
+        
+        function editHand(index) {
+            // For now, just show the hand builder with the existing hand
+            // In the future, you could load the existing hand into the builder
+            alert('Edit functionality coming soon!');
+        }
+        
+        function showHandBuilder() {
+            if (hands.length >= 3) {
+                alert('You can only have 3 hands. Delete one to create a new hand.');
+                return;
+            }
+            
+            document.getElementById('hands-list').classList.add('hidden');
+            document.getElementById('hand-builder').classList.add('active');
+            
+            // Reset the form
+            selectedCards = [];
+            document.getElementById('hand-name-input').value = '';
+            updateUI();
+            
+            // Clear any previous selections
+            document.querySelectorAll('.card-item').forEach(card => {
+                card.classList.remove('selected');
+            });
+        }
+        
+        function showHandsList() {
+            document.getElementById('hands-list').classList.remove('hidden');
+            document.getElementById('hand-builder').classList.remove('active');
+        }
+        
+        function toggleCard(cardId) {
+            const cardElement = document.querySelector(`[data-card-id="${cardId}"]`);
+            
+            if (selectedCards.includes(cardId)) {
+                // Remove card
+                selectedCards = selectedCards.filter(function(id) { return id !== cardId; });
+                cardElement.classList.remove('selected');
+            } else {
+                // Add card if we have room
+                if (selectedCards.length < 10) {
+                    selectedCards.push(cardId);
+                    cardElement.classList.add('selected');
+                } else {
+                    alert('You can only select 10 cards for your hand!');
+                    return;
+                }
+            }
+            
+            updateUI();
+        }
+        
+        function updateUI() {
+            const selectedCount = document.getElementById('selected-count');
+            const saveButton = document.getElementById('save-hand-btn');
+            
+            selectedCount.textContent = selectedCards.length;
+            
+            // Enable/disable save button
+            saveButton.disabled = selectedCards.length !== 10;
+        }
+        
+        document.getElementById('save-hand-btn').addEventListener('click', function() {
+            if (selectedCards.length !== 10) {
+                alert('You must select exactly 10 cards!');
+                return;
+            }
+            
+            const handName = document.getElementById('hand-name-input').value.trim();
+            if (!handName) {
+                alert('Please enter a name for your hand!');
+                return;
+            }
+            
+            fetch('/api/save-hand', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    selected_cards: selectedCards,
+                    hand_name: handName
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Hand saved successfully!');
+                    loadHands();
+                    showHandsList();
+                } else {
+                    alert('Error saving hand: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error saving hand:', error);
+                alert('Error saving hand. Please try again.');
+            });
+        });
+    </script>
+</body>
+</html> 

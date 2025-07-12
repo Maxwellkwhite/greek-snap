@@ -216,12 +216,12 @@
                     </div>
                 </div>
                 <div class="top-controls">
-                    <button class="debug-button" onclick="debugUser()" title="Debug user state">
-                        <i class="fas fa-bug me-1"></i>Debug
-                    </button>
                     <button class="reset-button" onclick="resetUser()" title="Reset all user data">
                         <i class="fas fa-redo me-1"></i>Reset
                     </button>
+                    <a href="{{ url_for('create_hand') }}" class="collection-button">
+                        <i class="fas fa-hand-paper me-2"></i>My Hands
+                    </a>
                     <a href="{{ url_for('collection') }}" class="collection-button">
                         <i class="fas fa-book me-2"></i>Collection
                     </a>
@@ -380,43 +380,7 @@
             }
         }
 
-        function debugUser() {
-            fetch('/api/debug-user')
-            .then(response => response.json())
-            .then(data => {
-                console.log('Debug User Data:', data);
-                
-                let debugInfo = `User Debug Info:\n\n`;
-                debugInfo += `Email: ${data.email}\n`;
-                debugInfo += `XP: ${data.xp}\n`;
-                debugInfo += `Level: ${data.level}\n`;
-                debugInfo += `Total Cards: ${data.total_cards}\n\n`;
-                
-                debugInfo += `Unlocked Cards (${data.unlocked_cards.length}):\n`;
-                if (data.unlocked_card_names.length > 0) {
-                    data.unlocked_card_names.forEach(name => {
-                        debugInfo += `• ${name}\n`;
-                    });
-                } else {
-                    debugInfo += `• None\n`;
-                }
-                
-                debugInfo += `\nPending Rewards (${data.pending_rewards.length}):\n`;
-                if (data.pending_reward_names.length > 0) {
-                    data.pending_reward_names.forEach(name => {
-                        debugInfo += `• ${name}\n`;
-                    });
-                } else {
-                    debugInfo += `• None\n`;
-                }
-                
-                alert(debugInfo);
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('An error occurred while getting debug info');
-            });
-        }
+
     </script>
 </body>
 </html> 
