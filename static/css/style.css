@@ -27,6 +27,47 @@ body {
     border-color: #f39c12;
 }
 
+/* Unplayable cards styling */
+.game-card.unplayable {
+    opacity: 0.5;
+    cursor: not-allowed;
+    filter: grayscale(50%);
+    border-color: #95a5a6;
+}
+
+.game-card.unplayable:hover {
+    transform: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border-color: #95a5a6;
+}
+
+.game-card.unplayable .card-cost {
+    background: #95a5a6;
+    color: #ecf0f1;
+}
+
+.game-card.unplayable::after {
+    content: "Not enough energy";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(231, 76, 60, 0.9);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: bold;
+    z-index: 10;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+.game-card.unplayable:hover::after {
+    opacity: 1;
+}
+
 .game-card.selected {
     border-color: #e74c3c;
     transform: scale(1.05);

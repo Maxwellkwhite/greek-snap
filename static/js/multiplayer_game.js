@@ -381,18 +381,25 @@ class MultiplayerGame {
             cardDiv.setAttribute('data-card-index', cardIndex);
         }
         
-        // Add drag functionality for hand cards
-        if (isHandCard && this.gameState.is_my_turn) {
-            cardDiv.draggable = true;
-            cardDiv.addEventListener('dragstart', (e) => {
-                this.handleDragStart(e, cardIndex);
-            });
-            cardDiv.addEventListener('dragend', (e) => {
-                this.handleDragEnd(e);
-            });
-            cardDiv.addEventListener('click', () => {
-                this.selectCard(cardIndex);
-            });
+        // Check if card is playable and add appropriate functionality
+        if (isHandCard) {
+            // Check if card is playable (use actual cost for check)
+            if (actualCost > this.gameState.player_energy) {
+                cardDiv.classList.add('unplayable');
+                cardDiv.style.cursor = 'not-allowed';
+            } else if (this.gameState.is_my_turn) {
+                // Make card draggable only if it's playable and it's the player's turn
+                cardDiv.draggable = true;
+                cardDiv.addEventListener('dragstart', (e) => {
+                    this.handleDragStart(e, cardIndex);
+                });
+                cardDiv.addEventListener('dragend', (e) => {
+                    this.handleDragEnd(e);
+                });
+                cardDiv.addEventListener('click', () => {
+                    this.selectCard(cardIndex);
+                });
+            }
         }
         
         return cardElement;

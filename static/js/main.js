@@ -312,8 +312,7 @@ class MarvelSnapGame {
             
             // Check if card is playable (use actual cost for check)
             if (actualCost > this.gameState.player_energy) {
-                cardDiv.style.opacity = '0.5';
-                cardDiv.style.cursor = 'not-allowed';
+                cardDiv.classList.add('unplayable');
             } else {
                 // Make card draggable
                 cardDiv.draggable = true;
