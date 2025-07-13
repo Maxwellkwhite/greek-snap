@@ -301,10 +301,30 @@ class Game:
                 card_data["modified_power"] = self.calculate_card_power(card, location, "opponent")
                 opponent_cards_with_power.append(card_data)
             
+            # Map cards to the correct sides based on player_id
+            if player_id == "player1":
+                # Player 1 sees their cards as player_cards and opponent's cards as opponent_cards
+                my_cards = player_cards_with_power
+                opponent_cards = opponent_cards_with_power
+                my_power = player_power
+                opponent_power = opponent_power
+            elif player_id == "player2":
+                # Player 2 sees their cards as player_cards and opponent's cards as opponent_cards
+                my_cards = opponent_cards_with_power
+                opponent_cards = player_cards_with_power
+                my_power = opponent_power
+                opponent_power = player_power
+            else:
+                # Default fallback (for single player mode)
+                my_cards = player_cards_with_power
+                opponent_cards = opponent_cards_with_power
+                my_power = player_power
+                opponent_power = opponent_power
+            
             location_data = location.copy()
-            location_data["player_cards"] = player_cards_with_power
-            location_data["opponent_cards"] = opponent_cards_with_power
-            location_data["player_power"] = player_power
+            location_data["player_cards"] = my_cards
+            location_data["opponent_cards"] = opponent_cards
+            location_data["player_power"] = my_power
             location_data["opponent_power"] = opponent_power
             locations_with_power.append(location_data)
         

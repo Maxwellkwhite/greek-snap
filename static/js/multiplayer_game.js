@@ -83,6 +83,7 @@ class MultiplayerGame {
 
         // Card detail modal close button
         document.getElementById('cardDetailModal').addEventListener('hidden.bs.modal', () => {
+            // Reset modal content when closed
             this.resetModalContent();
         });
     }
@@ -313,19 +314,24 @@ class MultiplayerGame {
         let actualCost = card.cost;
         let baseCost = card.cost;
         
-        // Calculate global cost reduction from all locations
-        let globalCostReduction = 0;
-        this.gameState.locations.forEach(location => {
-            if (location.effect_type === 'cost_reduction') {
-                globalCostReduction += location.effect_value;
-            }
-        });
-        
-        // Apply hand cost increases
-        actualCost += this.gameState.player_hand_cost_increase;
-        
-        // Apply global cost reduction
-        actualCost = Math.max(0, actualCost - globalCostReduction);
+        if (isHandCard && locationIndex !== null && card.location_costs && card.location_costs[locationIndex] !== undefined) {
+            // Use location-specific cost for hand cards
+            actualCost = card.location_costs[locationIndex];
+        } else {
+            // Calculate global cost reduction from all locations
+            let globalCostReduction = 0;
+            this.gameState.locations.forEach(location => {
+                if (location.effect_type === 'cost_reduction') {
+                    globalCostReduction += location.effect_value;
+                }
+            });
+            
+            // Apply hand cost increases
+            actualCost += this.gameState.player_hand_cost_increase;
+            
+            // Apply global cost reduction
+            actualCost = Math.max(0, actualCost - globalCostReduction);
+        }
         
         // Show cost with color coding
         costElement.textContent = actualCost;
@@ -339,7 +345,22 @@ class MultiplayerGame {
         
         // Set card name and power
         cardDiv.querySelector('.card-name').textContent = card.name;
-        cardDiv.querySelector('.card-power').textContent = card.power;
+        
+        // Handle power display - show modified power if different from base
+        const powerElement = cardDiv.querySelector('.card-power');
+        const basePower = card.power;
+        const modifiedPower = card.modified_power !== undefined ? card.modified_power : card.power;
+        
+        powerElement.textContent = modifiedPower;
+        
+        // Color code power if modified
+        if (modifiedPower > basePower) {
+            powerElement.classList.add('modified');
+        } else if (modifiedPower < basePower) {
+            powerElement.classList.add('negative');
+        } else {
+            powerElement.classList.remove('modified', 'negative');
+        }
         
         // Set card ability
         const abilityElement = cardDiv.querySelector('.card-ability');
@@ -507,47 +528,398 @@ class MultiplayerGame {
     }
 
     showCardDetail(card, locationIndex, player, cardIndex) {
-        const modal = new bootstrap.Modal(document.getElementById('cardDetailModal'));
-        
-        // Set card details
+        // Populate modal with card information
         document.getElementById('modalCardName').textContent = card.name;
         document.getElementById('modalCardCost').textContent = card.cost;
-        document.getElementById('modalCardPower').textContent = card.power;
+        
+        // Show base power in the modal's power circle (always blue)
+        const powerElement = document.getElementById('modalCardPower');
+        powerElement.textContent = card.power;
+        powerElement.style.backgroundColor = '#3498db'; // Blue for base power
+        
         document.getElementById('modalCardAbility').textContent = card.ability || 'No special ability';
-        
-        // Generate power breakdown
-        const powerBreakdown = this.generatePowerBreakdown(card, locationIndex, player);
-        document.getElementById('modalPowerBreakdown').innerHTML = powerBreakdown;
-        
+
+        // Generate cost breakdown (only for cards on board, not hand cards)
+        if (locationIndex !== null) {
+            this.generateCostBreakdown(card, locationIndex, player);
+        } else {
+            // For hand cards, show simple cost info
+            const powerBreakdownContainer = document.getElementById('modalPowerBreakdown');
+            const costBreakdownDiv = document.createElement('div');
+            costBreakdownDiv.className = 'card-detail-cost-breakdown';
+            costBreakdownDiv.innerHTML = '<h6>Cost:</h6><div id="modalCostBreakdown"></div>';
+            powerBreakdownContainer.parentNode.insertBefore(costBreakdownDiv, powerBreakdownContainer);
+            
+            const costBreakdownContainer = document.getElementById('modalCostBreakdown');
+            costBreakdownContainer.innerHTML = '';
+            
+            const baseCost = card.cost;
+            
+            // Calculate global cost reduction from all locations
+            let globalCostReduction = 0;
+            const costReductionSources = [];
+            this.gameState.locations.forEach((location, index) => {
+                if (location.effect_type === 'cost_reduction') {
+                    globalCostReduction += location.effect_value;
+                    costReductionSources.push(`${location.name} (-${location.effect_value})`);
+                }
+            });
+            
+            // Apply hand cost increases from Ares or other effects
+            const handCostIncrease = this.gameState.player_hand_cost_increase || 0;
+            
+            const actualCost = Math.max(0, baseCost + handCostIncrease - globalCostReduction);
+            
+            // Base cost
+            const baseItem = document.createElement('div');
+            baseItem.className = 'cost-breakdown-item neutral';
+            baseItem.innerHTML = `<span>Base Cost:</span><span>${baseCost}</span>`;
+            costBreakdownContainer.appendChild(baseItem);
+
+            // Hand cost increases
+            if (handCostIncrease > 0) {
+                const increaseItem = document.createElement('div');
+                increaseItem.className = 'cost-breakdown-item negative';
+                increaseItem.innerHTML = `<span>Hand Cost Increases:</span><span>+${handCostIncrease}</span>`;
+                costBreakdownContainer.appendChild(increaseItem);
+
+                // Show source
+                const sourceItem = document.createElement('div');
+                sourceItem.className = 'cost-breakdown-item negative';
+                sourceItem.style.marginLeft = '1rem';
+                sourceItem.style.fontSize = '0.9em';
+                sourceItem.innerHTML = `<span>• Ares (+${handCostIncrease})</span>`;
+                costBreakdownContainer.appendChild(sourceItem);
+            }
+
+            // Cost reductions from locations
+            if (globalCostReduction > 0) {
+                const reductionItem = document.createElement('div');
+                reductionItem.className = 'cost-breakdown-item positive';
+                reductionItem.innerHTML = `<span>Cost Reductions:</span><span>-${globalCostReduction}</span>`;
+                costBreakdownContainer.appendChild(reductionItem);
+                
+                // Add individual reduction sources
+                costReductionSources.forEach(source => {
+                    const sourceItem = document.createElement('div');
+                    sourceItem.className = 'cost-breakdown-item positive';
+                    sourceItem.style.marginLeft = '1rem';
+                    sourceItem.style.fontSize = '0.9em';
+                    sourceItem.innerHTML = `<span>• ${source}</span>`;
+                    costBreakdownContainer.appendChild(sourceItem);
+                });
+                
+                // Total modified cost
+                const totalItem = document.createElement('div');
+                totalItem.className = 'cost-breakdown-item neutral';
+                totalItem.style.fontWeight = 'bold';
+                totalItem.style.borderTop = '1px solid #dee2e6';
+                totalItem.style.paddingTop = '0.5rem';
+                totalItem.style.marginTop = '0.5rem';
+                totalItem.innerHTML = `<span>Total Cost:</span><span>${actualCost}</span>`;
+                costBreakdownContainer.appendChild(totalItem);
+            } else if (handCostIncrease > 0) {
+                // Show total when there are hand cost increases but no reductions
+                const totalItem = document.createElement('div');
+                totalItem.className = 'cost-breakdown-item neutral';
+                totalItem.style.fontWeight = 'bold';
+                totalItem.style.borderTop = '1px solid #dee2e6';
+                totalItem.style.paddingTop = '0.5rem';
+                totalItem.style.marginTop = '0.5rem';
+                totalItem.innerHTML = `<span>Total Cost:</span><span>${actualCost}</span>`;
+                costBreakdownContainer.appendChild(totalItem);
+            }
+        }
+
+        // Generate power breakdown (only for cards on board, not hand cards)
+        if (locationIndex !== null) {
+            this.generatePowerBreakdown(card, locationIndex, player);
+        } else {
+            // For hand cards, show simple power info
+            const breakdownContainer = document.getElementById('modalPowerBreakdown');
+            breakdownContainer.innerHTML = '';
+            
+            const basePower = card.power;
+            
+            // Base power
+            const baseItem = document.createElement('div');
+            baseItem.className = 'power-breakdown-item neutral';
+            baseItem.innerHTML = `<span>Base Power:</span><span>${basePower}</span>`;
+            breakdownContainer.appendChild(baseItem);
+        }
+
+        // Show the modal
+        const modal = new bootstrap.Modal(document.getElementById('cardDetailModal'));
         modal.show();
     }
 
+    generateCostBreakdown(card, locationIndex, player) {
+        const breakdownContainer = document.getElementById('modalCostBreakdown');
+        if (!breakdownContainer) {
+            // Create cost breakdown container if it doesn't exist
+            const powerBreakdownContainer = document.getElementById('modalPowerBreakdown');
+            const costBreakdownDiv = document.createElement('div');
+            costBreakdownDiv.className = 'card-detail-cost-breakdown';
+            costBreakdownDiv.innerHTML = '<h6>Cost Breakdown:</h6><div id="modalCostBreakdown"></div>';
+            powerBreakdownContainer.parentNode.insertBefore(costBreakdownDiv, powerBreakdownContainer);
+        }
+        
+        const costBreakdownContainer = document.getElementById('modalCostBreakdown');
+        costBreakdownContainer.innerHTML = '';
+
+        const baseCost = card.cost;
+        
+        // Calculate global cost reduction from all locations
+        let globalCostReduction = 0;
+        const costReductionSources = [];
+        this.gameState.locations.forEach((location, index) => {
+            if (location.effect_type === 'cost_reduction') {
+                globalCostReduction += location.effect_value;
+                costReductionSources.push(`${location.name} (-${location.effect_value})`);
+            }
+        });
+        
+        // Get hand cost increase from game state
+        const handCostIncrease = this.gameState.player_hand_cost_increase || 0;
+        
+        const actualCost = Math.max(0, baseCost + handCostIncrease - globalCostReduction);
+        
+        // Base cost
+        const baseItem = document.createElement('div');
+        baseItem.className = 'cost-breakdown-item neutral';
+        baseItem.innerHTML = `<span>Base Cost:</span><span>${baseCost}</span>`;
+        costBreakdownContainer.appendChild(baseItem);
+
+        // Hand cost increases
+        if (handCostIncrease > 0) {
+            const increaseItem = document.createElement('div');
+            increaseItem.className = 'cost-breakdown-item negative';
+            increaseItem.innerHTML = `<span>Hand Cost Increases:</span><span>+${handCostIncrease}</span>`;
+            costBreakdownContainer.appendChild(increaseItem);
+
+            // Show source
+            const sourceItem = document.createElement('div');
+            sourceItem.className = 'cost-breakdown-item negative';
+            sourceItem.style.marginLeft = '1rem';
+            sourceItem.style.fontSize = '0.9em';
+            sourceItem.innerHTML = `<span>• Ares (+${handCostIncrease})</span>`;
+            costBreakdownContainer.appendChild(sourceItem);
+        }
+
+        // Cost reductions from locations
+        if (globalCostReduction > 0) {
+            const reductionItem = document.createElement('div');
+            reductionItem.className = 'cost-breakdown-item positive';
+            reductionItem.innerHTML = `<span>Cost Reductions:</span><span>-${globalCostReduction}</span>`;
+            costBreakdownContainer.appendChild(reductionItem);
+            
+            // Add individual reduction sources
+            costReductionSources.forEach(source => {
+                const sourceItem = document.createElement('div');
+                sourceItem.className = 'cost-breakdown-item positive';
+                sourceItem.style.marginLeft = '1rem';
+                sourceItem.style.fontSize = '0.9em';
+                sourceItem.innerHTML = `<span>• ${source}</span>`;
+                costBreakdownContainer.appendChild(sourceItem);
+            });
+        }
+
+        // Total modified cost
+        if (actualCost !== baseCost) {
+            const totalItem = document.createElement('div');
+            totalItem.className = 'cost-breakdown-item neutral';
+            totalItem.style.fontWeight = 'bold';
+            totalItem.style.borderTop = '1px solid #dee2e6';
+            totalItem.style.paddingTop = '0.5rem';
+            totalItem.style.marginTop = '0.5rem';
+            totalItem.innerHTML = `<span>Total Cost:</span><span>${actualCost}</span>`;
+            costBreakdownContainer.appendChild(totalItem);
+        }
+    }
+
     generatePowerBreakdown(card, locationIndex, player) {
-        if (!this.gameState) return '';
-        
-        const location = this.gameState.locations[locationIndex];
+        const breakdownContainer = document.getElementById('modalPowerBreakdown');
+        breakdownContainer.innerHTML = '';
+
         const basePower = card.power;
-        let breakdown = `<div class="mb-2"><strong>Base Power:</strong> ${basePower}</div>`;
+        const modifiedPower = card.modified_power !== undefined ? card.modified_power : card.power;
         
-        // Add location effects
-        if (location.effect_type === 'power_boost') {
-            breakdown += `<div class="mb-2"><strong>Location Bonus:</strong> +${location.effect_value}</div>`;
+        // Base power
+        const baseItem = document.createElement('div');
+        baseItem.className = 'power-breakdown-item neutral';
+        baseItem.innerHTML = `<span>Base Power:</span><span>${basePower}</span>`;
+        breakdownContainer.appendChild(baseItem);
+
+        // Location effect (use unique variable names)
+        const loc = this.gameState.locations[locationIndex];
+        const locCards = player === 'player' ? loc.player_cards : loc.opponent_cards;
+        let locationPower = 0;
+        let locationSource = null;
+        let isLocationReduction = false;
+        
+        if (loc.effect_type === 'power_boost') {
+            locationPower = loc.effect_value;
+            locationSource = `${loc.name} (+${loc.effect_value})`;
+        } else if (loc.effect_type === 'single_card_bonus' && locCards.length === 1) {
+            locationPower = loc.effect_value;
+            locationSource = `${loc.name} (+${loc.effect_value})`;
+        } else if (loc.effect_type === 'reduce_all_power') {
+            locationPower = loc.effect_value;
+            locationSource = `${loc.name} (-${loc.effect_value})`;
+            isLocationReduction = true;
         }
-        
-        // Add card ability effects
-        if (card.ability_type === 'ongoing') {
-            breakdown += `<div class="mb-2"><strong>Ongoing Effect:</strong> ${card.ability}</div>`;
+        // Add more effect types as needed
+        if (locationPower !== 0) {
+            const locItem = document.createElement('div');
+            locItem.className = isLocationReduction ? 'power-breakdown-item negative' : 'power-breakdown-item positive';
+            locItem.innerHTML = `<span>Location Effect:</span><span>${isLocationReduction ? '-' : '+'}${locationPower}</span>`;
+            breakdownContainer.appendChild(locItem);
+
+            // Show source
+            const sourceItem = document.createElement('div');
+            sourceItem.className = isLocationReduction ? 'power-breakdown-item negative' : 'power-breakdown-item positive';
+            sourceItem.style.marginLeft = '1rem';
+            sourceItem.style.fontSize = '0.9em';
+            sourceItem.innerHTML = `<span>• ${locationSource}</span>`;
+            breakdownContainer.appendChild(sourceItem);
         }
+
+        // Power boosts from ongoing abilities
+        const location = this.gameState.locations[locationIndex];
+        const cards = player === 'player' ? location.player_cards : location.opponent_cards;
         
-        return breakdown;
+        let totalBoost = 0;
+        const boostSources = [];
+        cards.forEach(otherCard => {
+            if (otherCard !== card && 
+                otherCard.ability_type === 'ongoing' && 
+                otherCard.ability_effect && 
+                otherCard.ability_effect.type === 'power_boost' &&
+                otherCard.ability_effect.target === 'other_cards') {
+                totalBoost += otherCard.ability_effect.value;
+                boostSources.push(`${otherCard.name} (+${otherCard.ability_effect.value})`);
+            }
+        });
+
+        if (totalBoost > 0) {
+            const boostItem = document.createElement('div');
+            boostItem.className = 'power-breakdown-item positive';
+            boostItem.innerHTML = `<span>Power Boosts:</span><span>+${totalBoost}</span>`;
+            breakdownContainer.appendChild(boostItem);
+            
+            // Add individual boost sources
+            boostSources.forEach(source => {
+                const sourceItem = document.createElement('div');
+                sourceItem.className = 'power-breakdown-item positive';
+                sourceItem.style.marginLeft = '1rem';
+                sourceItem.style.fontSize = '0.9em';
+                sourceItem.innerHTML = `<span>• ${source}</span>`;
+                breakdownContainer.appendChild(sourceItem);
+            });
+        }
+
+        // Power reductions from opponent's ongoing abilities
+        const opponentCards = player === 'player' ? location.opponent_cards : location.player_cards;
+        
+        let totalReduction = 0;
+        const reductionSources = [];
+        opponentCards.forEach(opponentCard => {
+            if (opponentCard.ability_type === 'ongoing' && 
+                opponentCard.ability_effect && 
+                opponentCard.ability_effect.type === 'reduce_opponent_power') {
+                totalReduction += opponentCard.ability_effect.value;
+                reductionSources.push(`${opponentCard.name} (-${opponentCard.ability_effect.value})`);
+            }
+        });
+
+        if (totalReduction > 0) {
+            const reductionItem = document.createElement('div');
+            reductionItem.className = 'power-breakdown-item negative';
+            reductionItem.innerHTML = `<span>Power Reductions:</span><span>-${totalReduction}</span>`;
+            breakdownContainer.appendChild(reductionItem);
+            
+            // Add individual reduction sources
+            reductionSources.forEach(source => {
+                const sourceItem = document.createElement('div');
+                sourceItem.className = 'power-breakdown-item negative';
+                sourceItem.style.marginLeft = '1rem';
+                sourceItem.style.fontSize = '0.9em';
+                sourceItem.innerHTML = `<span>• ${source}</span>`;
+                breakdownContainer.appendChild(sourceItem);
+            });
+        }
+
+        // Power reductions from all cards (affects everyone)
+        const allCards = [...location.player_cards, ...location.opponent_cards];
+        
+        let totalAllReduction = 0;
+        const allReductionSources = [];
+        allCards.forEach(allCard => {
+            if (allCard.ability_type === 'ongoing' && 
+                allCard.ability_effect && 
+                allCard.ability_effect.type === 'reduce_all_power') {
+                totalAllReduction += allCard.ability_effect.value;
+                allReductionSources.push(`${allCard.name} (-${allCard.ability_effect.value})`);
+            }
+        });
+
+        if (totalAllReduction > 0) {
+            const allReductionItem = document.createElement('div');
+            allReductionItem.className = 'power-breakdown-item negative';
+            allReductionItem.innerHTML = `<span>Global Power Reductions:</span><span>-${totalAllReduction}</span>`;
+            breakdownContainer.appendChild(allReductionItem);
+            
+            // Add individual reduction sources
+            allReductionSources.forEach(source => {
+                const sourceItem = document.createElement('div');
+                sourceItem.className = 'power-breakdown-item negative';
+                sourceItem.style.marginLeft = '1rem';
+                sourceItem.style.fontSize = '0.9em';
+                sourceItem.innerHTML = `<span>• ${source}</span>`;
+                breakdownContainer.appendChild(sourceItem);
+            });
+        }
+
+        // Card abilities that activate when alone
+        if (card.ability_type === 'ongoing' && 
+            card.ability_effect && 
+            card.ability_effect.type === 'when_alone' &&
+            locCards.length === 1) {
+            const aloneItem = document.createElement('div');
+            aloneItem.className = 'power-breakdown-item positive';
+            aloneItem.innerHTML = `<span>Card Ability:</span><span>+${card.ability_effect.value}</span>`;
+            breakdownContainer.appendChild(aloneItem);
+
+            // Show source
+            const sourceItem = document.createElement('div');
+            sourceItem.className = 'power-breakdown-item positive';
+            sourceItem.style.marginLeft = '1rem';
+            sourceItem.style.fontSize = '0.9em';
+            sourceItem.innerHTML = `<span>• ${card.name} (+${card.ability_effect.value})</span>`;
+            breakdownContainer.appendChild(sourceItem);
+        }
+
+        // Total modified power
+        if (modifiedPower !== basePower) {
+            const totalItem = document.createElement('div');
+            totalItem.className = 'power-breakdown-item neutral';
+            totalItem.style.fontWeight = 'bold';
+            totalItem.style.borderTop = '1px solid #dee2e6';
+            totalItem.style.paddingTop = '0.5rem';
+            totalItem.style.marginTop = '0.5rem';
+            totalItem.innerHTML = `<span>Total Power:</span><span>${modifiedPower}</span>`;
+            breakdownContainer.appendChild(totalItem);
+        }
     }
 
     resetModalContent() {
+        // Reset modal content when closed
         document.getElementById('modalCardName').textContent = '';
         document.getElementById('modalCardCost').textContent = '';
         document.getElementById('modalCardPower').textContent = '';
         document.getElementById('modalCardAbility').textContent = '';
         document.getElementById('modalPowerBreakdown').innerHTML = '';
+        document.getElementById('modalCostBreakdown').innerHTML = ''; // Reset cost breakdown
     }
 }
 
