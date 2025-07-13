@@ -1,8 +1,10 @@
 import time
 import threading
+import random
 from collections import defaultdict
 from flask_socketio import emit, join_room, leave_room
 from game import Game
+from cards_data import CHARACTERS
 
 # Global socketio instance (will be set from main.py)
 socketio = None
@@ -65,8 +67,27 @@ class MatchmakingSystem:
         self.game_counter += 1
         game_id = f"game_{self.game_counter}"
         
-        # Create game instance with player1's hand
+        # Create game instance with player1's hand for the "player" side
         game = Game(player_deck_ids=player1['hand_data'])
+        
+        # Set up player2's hand as the "opponent" side
+        # We need to replace the opponent's deck and hand with player2's selected cards
+        game.opponent_deck = []
+        for card_id in player2['hand_data']:
+            card = next((c for c in CHARACTERS if c['id'] == card_id), None)
+            if card:
+                game.opponent_deck.append(card)
+        
+        # If we have fewer than 10 cards, add some random cards to fill the deck
+        if len(game.opponent_deck) < 10:
+            remaining_cards = [c for c in CHARACTERS if c['id'] not in player2['hand_data']]
+            random.shuffle(remaining_cards)
+            game.opponent_deck.extend(remaining_cards[:10 - len(game.opponent_deck)])
+        
+        # Shuffle the opponent deck and draw initial hand
+        random.shuffle(game.opponent_deck)
+        game.opponent_hand = []
+        game.draw_cards(3, "opponent")
         
         # Store game data
         game_data = {

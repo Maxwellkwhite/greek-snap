@@ -11,6 +11,10 @@ class Game:
         self.player_hand = []
         self.opponent_hand = []
         
+        # Multiplayer turn tracking
+        self.player1_ready_for_next_turn = False
+        self.player2_ready_for_next_turn = False
+        
         # Set up player deck based on selected hand
         if player_deck_ids:
             # Create deck from selected card IDs (only one copy of each)
@@ -209,6 +213,12 @@ class Game:
         if player_id and not self.is_player_turn(player_id):
             return False, "Not your turn"
         
+        # Mark this player as ready for next turn
+        if player_id == "player1":
+            self.player1_ready_for_next_turn = True
+        elif player_id == "player2":
+            self.player2_ready_for_next_turn = True
+        
         # Process all pending On Reveal effects
         for effect in self.pending_on_reveal_effects:
             self.process_on_reveal_ability(effect["card"], effect["location_index"], effect["player"])
@@ -217,28 +227,37 @@ class Game:
         # Process all pending location draw effects
         EffectHandler.process_pending_location_draw_effects(self)
         
-        # Switch turns for multiplayer
-        if player_id:
-            self.switch_turn()
-        
-        if self.turn < self.max_turns:
-            # Store unused energy for next turn
-            self.player_unused_energy = self.player_energy
-            self.opponent_unused_energy = self.opponent_energy
-            
-            self.turn += 1
-            
-            # Calculate new energy: base energy for turn + unused energy from previous turn
-            base_energy = min(self.turn, 6)
-            self.player_energy = base_energy + self.player_unused_energy
-            self.opponent_energy = base_energy + self.opponent_unused_energy
-            
-            # Draw cards
-            self.draw_cards(1, "player")
-            self.draw_cards(1, "opponent")
+        # Check if both players are ready for next turn
+        if self.player1_ready_for_next_turn and self.player2_ready_for_next_turn:
+            # Both players have ended their turn, advance to next turn
+            if self.turn < self.max_turns:
+                # Store unused energy for next turn
+                self.player_unused_energy = self.player_energy
+                self.opponent_unused_energy = self.opponent_energy
+                
+                self.turn += 1
+                
+                # Calculate new energy: base energy for turn + unused energy from previous turn
+                base_energy = min(self.turn, 6)
+                self.player_energy = base_energy + self.player_unused_energy
+                self.opponent_energy = base_energy + self.opponent_unused_energy
+                
+                # Draw cards
+                self.draw_cards(1, "player")
+                self.draw_cards(1, "opponent")
+                
+                # Reset ready flags for new turn
+                self.player1_ready_for_next_turn = False
+                self.player2_ready_for_next_turn = False
+                
+                # Start with player1's turn
+                self.current_player = "player1"
+            else:
+                self.game_over = True
+                self.calculate_winner()
         else:
-            self.game_over = True
-            self.calculate_winner()
+            # Only one player has ended their turn, switch to other player
+            self.switch_turn()
         
         return True, "Turn ended successfully"
     
@@ -289,31 +308,68 @@ class Game:
             location_data["opponent_power"] = opponent_power
             locations_with_power.append(location_data)
         
+        # Determine which hand and energy to show based on player_id
+        if player_id == "player1":
+            # Player 1 sees their own hand and energy
+            my_hand = self.player_hand
+            my_energy = self.player_energy
+            my_unused_energy = self.player_unused_energy
+            my_hand_cost_increase = self.player_hand_cost_increase
+            opponent_hand = self.opponent_hand
+            opponent_energy = self.opponent_energy
+            opponent_unused_energy = self.opponent_unused_energy
+            opponent_hand_cost_increase = self.opponent_hand_cost_increase
+        elif player_id == "player2":
+            # Player 2 sees their own hand and energy (which is the opponent's from the game's perspective)
+            my_hand = self.opponent_hand
+            my_energy = self.opponent_energy
+            my_unused_energy = self.opponent_unused_energy
+            my_hand_cost_increase = self.opponent_hand_cost_increase
+            opponent_hand = self.player_hand
+            opponent_energy = self.player_energy
+            opponent_unused_energy = self.player_unused_energy
+            opponent_hand_cost_increase = self.player_hand_cost_increase
+        else:
+            # Default fallback (for single player mode)
+            my_hand = self.player_hand
+            my_energy = self.player_energy
+            my_unused_energy = self.player_unused_energy
+            my_hand_cost_increase = self.player_hand_cost_increase
+            opponent_hand = self.opponent_hand
+            opponent_energy = self.opponent_energy
+            opponent_unused_energy = self.opponent_unused_energy
+            opponent_hand_cost_increase = self.opponent_hand_cost_increase
+        
         # Calculate modified costs for cards in hand
-        player_hand_with_costs = []
-        for card in self.player_hand:
+        my_hand_with_costs = []
+        for card in my_hand:
             card_data = card.copy()
             # Calculate costs for each location
             card_data["location_costs"] = {}
             for i, location in enumerate(self.locations):
-                card_data["location_costs"][i] = self.calculate_card_cost(card, location, "player")
-            player_hand_with_costs.append(card_data)
+                # Use the appropriate player role for cost calculation
+                player_role = "player" if player_id == "player1" else "opponent"
+                card_data["location_costs"][i] = self.calculate_card_cost(card, location, player_role)
+            my_hand_with_costs.append(card_data)
         
         game_state = {
             "turn": self.turn,
             "max_turns": self.max_turns,
             "current_player": self.current_player,
-            "player_hand": player_hand_with_costs,
-            "opponent_hand": self.opponent_hand,
-            "player_energy": self.player_energy,
-            "opponent_energy": self.opponent_energy,
-            "player_unused_energy": self.player_unused_energy,
-            "opponent_unused_energy": self.opponent_unused_energy,
+            "player_hand": my_hand_with_costs,
+            "opponent_hand": opponent_hand,
+            "player_energy": my_energy,
+            "opponent_energy": opponent_energy,
+            "player_unused_energy": my_unused_energy,
+            "opponent_unused_energy": opponent_unused_energy,
             "locations": locations_with_power,
             "game_over": self.game_over,
             "winner": self.winner,
-            "player_hand_cost_increase": self.player_hand_cost_increase,
-            "opponent_hand_cost_increase": self.opponent_hand_cost_increase
+            "player_hand_cost_increase": my_hand_cost_increase,
+            "opponent_hand_cost_increase": opponent_hand_cost_increase,
+            "player1_ready": self.player1_ready_for_next_turn,
+            "player2_ready": self.player2_ready_for_next_turn,
+            "both_players_ready": self.player1_ready_for_next_turn and self.player2_ready_for_next_turn
         }
         
         # Add turn information for the specific player

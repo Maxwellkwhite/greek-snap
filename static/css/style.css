@@ -769,6 +769,11 @@ body {
     animation: pulse-green 2s infinite;
 }
 
+.turn-indicator.waiting-for-opponent {
+    background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+    animation: pulse-orange 2s infinite;
+}
+
 @keyframes pulse-red {
     0% { box-shadow: 0 2px 10px rgba(255, 107, 107, 0.3); }
     50% { box-shadow: 0 2px 20px rgba(255, 107, 107, 0.6); }
@@ -779,6 +784,12 @@ body {
     0% { box-shadow: 0 2px 10px rgba(0, 184, 148, 0.3); }
     50% { box-shadow: 0 2px 20px rgba(0, 184, 148, 0.6); }
     100% { box-shadow: 0 2px 10px rgba(0, 184, 148, 0.3); }
+}
+
+@keyframes pulse-orange {
+    0% { box-shadow: 0 2px 10px rgba(243, 156, 18, 0.3); }
+    50% { box-shadow: 0 2px 20px rgba(243, 156, 18, 0.6); }
+    100% { box-shadow: 0 2px 10px rgba(243, 156, 18, 0.3); }
 }
 
 .game-board {

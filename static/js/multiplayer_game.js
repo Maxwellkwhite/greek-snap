@@ -149,15 +149,31 @@ class MultiplayerGame {
         const turnText = document.getElementById('turnText');
         
         console.log('Updating turn indicator. Is my turn:', this.gameState.is_my_turn);
+        console.log('Turn state:', {
+            player1_ready: this.gameState.player1_ready,
+            player2_ready: this.gameState.player2_ready,
+            both_players_ready: this.gameState.both_players_ready
+        });
         
         if (this.gameState.is_my_turn) {
             turnIndicator.className = 'turn-indicator your-turn';
             turnText.innerHTML = '<i class="fas fa-play me-2"></i>Your Turn!';
             console.log('Set turn indicator to: Your Turn!');
         } else {
-            turnIndicator.className = 'turn-indicator not-your-turn';
-            turnText.innerHTML = '<i class="fas fa-clock me-2"></i>Opponent\'s Turn';
-            console.log('Set turn indicator to: Opponent\'s Turn');
+            // Check if this player has already ended their turn
+            const myPlayerId = this.gameState.my_player_id;
+            const iHaveEndedTurn = (myPlayerId === 'player1' && this.gameState.player1_ready) || 
+                                  (myPlayerId === 'player2' && this.gameState.player2_ready);
+            
+            if (iHaveEndedTurn) {
+                turnIndicator.className = 'turn-indicator waiting-for-opponent';
+                turnText.innerHTML = '<i class="fas fa-hourglass-half me-2"></i>Waiting for Opponent...';
+                console.log('Set turn indicator to: Waiting for Opponent...');
+            } else {
+                turnIndicator.className = 'turn-indicator not-your-turn';
+                turnText.innerHTML = '<i class="fas fa-clock me-2"></i>Opponent\'s Turn';
+                console.log('Set turn indicator to: Opponent\'s Turn');
+            }
         }
     }
 
