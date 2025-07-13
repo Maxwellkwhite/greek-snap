@@ -1,5 +1,6 @@
 from flask import Flask, render_template, jsonify, request, session, redirect, url_for, flash
 from flask_bootstrap import Bootstrap
+from flask_socketio import SocketIO, emit, join_room, leave_room
 import os
 import random
 import json
@@ -11,11 +12,19 @@ from sqlalchemy import Integer, String, Date, JSON, Boolean, DateTime, func
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from xp_system import XPSystem
+from matchmaking import matchmaking
 
 app = Flask(__name__)
 
 # Initialize Bootstrap
 bootstrap = Bootstrap(app)
+
+# Initialize SocketIO
+socketio = SocketIO(app, cors_allowed_origins="*")
+
+# Set socketio instance in matchmaking
+from matchmaking import set_socketio
+set_socketio(socketio)
 
 # Configuration
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key')
@@ -64,6 +73,81 @@ class UserCollection(db.Model):
 
 # Global game instance
 current_game = None
+
+# WebSocket event handlers
+@socketio.on('connect')
+def handle_connect():
+    print(f"Client connected: {request.sid}")
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    print(f"Client disconnected: {request.sid}")
+
+@socketio.on('join_queue')
+def handle_join_queue(data):
+    """Handle player joining the matchmaking queue"""
+    if not current_user.is_authenticated:
+        emit('queue_error', {'message': 'You must be logged in to join the queue'})
+        return
+    
+    player_id = current_user.id
+    
+    # Check if user has a current hand selected
+    current_hand_data = current_user.misc2
+    if not current_hand_data:
+        emit('queue_error', {'message': 'Please select a battle hand before joining the queue'})
+        return
+    
+    try:
+        current_hand = json.loads(current_hand_data)
+        if not current_hand or 'cards' not in current_hand:
+            emit('queue_error', {'message': 'Please select a valid battle hand before joining the queue'})
+            return
+    except (json.JSONDecodeError, TypeError):
+        emit('queue_error', {'message': 'Please select a valid battle hand before joining the queue'})
+        return
+    
+    # Add player to queue
+    success, message = matchmaking.add_player_to_queue(player_id, current_hand['cards'])
+    
+    if success:
+        emit('queue_joined', {
+            'message': 'Successfully joined the queue',
+            'queue_size': len(matchmaking.queue)
+        })
+        # Join a room for this player
+        room_name = f"player_{player_id}"
+        join_room(room_name)
+        print(f"Player {player_id} joined room: {room_name}")
+    else:
+        emit('queue_error', {'message': message})
+
+@socketio.on('leave_queue')
+def handle_leave_queue(data):
+    """Handle player leaving the matchmaking queue"""
+    if not current_user.is_authenticated:
+        emit('queue_error', {'message': 'You must be logged in to leave the queue'})
+        return
+    
+    player_id = current_user.id
+    matchmaking.remove_player_from_queue(player_id)
+    
+    emit('queue_left', {'message': 'Successfully left the queue'})
+    room_name = f"player_{player_id}"
+    leave_room(room_name)
+    print(f"Player {player_id} left room: {room_name}")
+
+@socketio.on('get_queue_status')
+def handle_get_queue_status(data):
+    """Get the current queue status for the player"""
+    if not current_user.is_authenticated:
+        emit('queue_error', {'message': 'You must be logged in to check queue status'})
+        return
+    
+    player_id = current_user.id
+    status = matchmaking.get_queue_status(player_id)
+    
+    emit('queue_status', status)
 
 
 
@@ -167,6 +251,8 @@ def collection():
                          all_cards=all_cards, 
                          owned_cards=owned_cards, 
                          user=current_user)
+
+
 
 @app.route('/create-hand')
 @login_required
@@ -989,7 +1075,7 @@ def logout():
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
-    app.run(debug=True, port=5002)
+    socketio.run(app, debug=True, port=5002)
 
 
 
