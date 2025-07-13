@@ -76,7 +76,9 @@ class MatchmakingSystem:
             'player1_hand': player1['hand_data'],
             'player2_hand': player2['hand_data'],
             'created_at': time.time(),
-            'status': 'active'
+            'status': 'active',
+            'player1_ready': False,
+            'player2_ready': False
         }
         
         self.active_games[game_id] = game_data
@@ -105,6 +107,14 @@ class MatchmakingSystem:
                 'player1_id': player1['player_id'],
                 'player2_id': player2['player_id']
             })
+            
+            # Send initial game state to both players
+            print(f"Sending initial game state to both players")
+            player1_state = game.get_game_state("player1")
+            player2_state = game.get_game_state("player2")
+            
+            socketio.emit('game_state_update', player1_state, room=f"player_{player1['player_id']}")
+            socketio.emit('game_state_update', player2_state, room=f"player_{player2['player_id']}")
         
         return game_id
     
@@ -138,6 +148,113 @@ class MatchmakingSystem:
                         'queue_size': len(self.queue)
                     }
             return {'in_queue': False}
+    
+    def get_game_state(self, player_id):
+        """Get the current game state for a player"""
+        game_data = self.get_player_game(player_id)
+        if not game_data:
+            print(f"DEBUG: No game data found for player {player_id}")
+            return None
+        
+        game = game_data['game']
+        
+        # Determine which player this is
+        if player_id == game_data['player1_id']:
+            player_role = "player1"
+        elif player_id == game_data['player2_id']:
+            player_role = "player2"
+        else:
+            print(f"DEBUG: Player {player_id} not found in game data")
+            return None
+        
+        print(f"DEBUG: Getting game state for player {player_id} with role {player_role}")
+        game_state = game.get_game_state(player_role)
+        print(f"DEBUG: Game state keys: {list(game_state.keys()) if game_state else 'None'}")
+        return game_state
+    
+    def play_card(self, player_id, card_index, location_index):
+        """Play a card for a player"""
+        game_data = self.get_player_game(player_id)
+        if not game_data:
+            return False, "Player not in a game"
+        
+        game = game_data['game']
+        
+        # Determine which player this is
+        if player_id == game_data['player1_id']:
+            player_role = "player"
+            player_id_for_turn = "player1"
+        elif player_id == game_data['player2_id']:
+            player_role = "opponent"
+            player_id_for_turn = "player2"
+        else:
+            return False, "Invalid player"
+        
+        success, message = game.play_card(card_index, location_index, player_role, player_id_for_turn)
+        
+        # If successful, notify both players of the game state update
+        if success and socketio:
+            self._notify_game_update(game_data)
+        
+        return success, message
+    
+    def end_turn(self, player_id):
+        """End turn for a player"""
+        game_data = self.get_player_game(player_id)
+        if not game_data:
+            return False, "Player not in a game"
+        
+        game = game_data['game']
+        
+        # Determine which player this is
+        if player_id == game_data['player1_id']:
+            player_id_for_turn = "player1"
+        elif player_id == game_data['player2_id']:
+            player_id_for_turn = "player2"
+        else:
+            return False, "Invalid player"
+        
+        success, message = game.end_turn(player_id_for_turn)
+        
+        # If successful, notify both players of the game state update
+        if success and socketio:
+            self._notify_game_update(game_data)
+        
+        return success, message
+    
+    def _notify_game_update(self, game_data):
+        """Notify both players of a game state update"""
+        if not socketio:
+            return
+        
+        # Get updated game state for both players
+        player1_state = game_data['game'].get_game_state("player1")
+        player2_state = game_data['game'].get_game_state("player2")
+        
+        # Notify player 1
+        socketio.emit('game_state_update', player1_state, room=f"player_{game_data['player1_id']}")
+        
+        # Notify player 2
+        socketio.emit('game_state_update', player2_state, room=f"player_{game_data['player2_id']}")
+        
+        # Check if game is over
+        if game_data['game'].game_over:
+            socketio.emit('game_over', {
+                'winner': game_data['game'].winner,
+                'game_id': self._get_game_id_by_data(game_data)
+            }, room=f"player_{game_data['player1_id']}")
+            
+            socketio.emit('game_over', {
+                'winner': game_data['game'].winner,
+                'game_id': self._get_game_id_by_data(game_data)
+            }, room=f"player_{game_data['player2_id']}")
+    
+    def _get_game_id_by_data(self, game_data):
+        """Get game ID from game data"""
+        for game_id, data in self.active_games.items():
+            if data == game_data:
+                return game_id
+        return None
 
 # Global matchmaking instance
 matchmaking = MatchmakingSystem() 

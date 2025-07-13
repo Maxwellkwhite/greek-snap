@@ -123,7 +123,7 @@ def handle_join_queue(data):
         emit('queue_error', {'message': message})
 
 @socketio.on('leave_queue')
-def handle_leave_queue(data):
+def handle_leave_queue(data=None):
     """Handle player leaving the matchmaking queue"""
     if not current_user.is_authenticated:
         emit('queue_error', {'message': 'You must be logged in to leave the queue'})
@@ -138,7 +138,7 @@ def handle_leave_queue(data):
     print(f"Player {player_id} left room: {room_name}")
 
 @socketio.on('get_queue_status')
-def handle_get_queue_status(data):
+def handle_get_queue_status(data=None):
     """Get the current queue status for the player"""
     if not current_user.is_authenticated:
         emit('queue_error', {'message': 'You must be logged in to check queue status'})
@@ -148,6 +148,85 @@ def handle_get_queue_status(data):
     status = matchmaking.get_queue_status(player_id)
     
     emit('queue_status', status)
+
+@socketio.on('get_game_state')
+def handle_get_game_state(data=None):
+    """Get the current game state for the player"""
+    if not current_user.is_authenticated:
+        emit('game_error', {'message': 'You must be logged in to get game state'})
+        return
+    
+    player_id = current_user.id
+    print(f"DEBUG: Player {player_id} requesting game state")
+    game_state = matchmaking.get_game_state(player_id)
+    
+    if game_state:
+        print(f"DEBUG: Sending game state to player {player_id}")
+        emit('game_state_update', game_state)
+    else:
+        print(f"DEBUG: No game state for player {player_id}")
+        emit('game_error', {'message': 'You are not in a game'})
+
+@socketio.on('play_card')
+def handle_play_card(data):
+    """Handle playing a card"""
+    if not current_user.is_authenticated:
+        emit('game_error', {'message': 'You must be logged in to play cards'})
+        return
+    
+    player_id = current_user.id
+    card_index = data.get('card_index')
+    location_index = data.get('location_index')
+    
+    if card_index is None or location_index is None:
+        emit('game_error', {'message': 'Card index and location index are required'})
+        return
+    
+    success, message = matchmaking.play_card(player_id, card_index, location_index)
+    
+    if success:
+        emit('card_played', {'message': message})
+    else:
+        emit('game_error', {'message': message})
+
+@socketio.on('end_turn')
+def handle_end_turn(data=None):
+    """Handle ending a turn"""
+    if not current_user.is_authenticated:
+        emit('game_error', {'message': 'You must be logged in to end turn'})
+        return
+    
+    player_id = current_user.id
+    success, message = matchmaking.end_turn(player_id)
+    
+    if success:
+        emit('turn_ended', {'message': message})
+    else:
+        emit('game_error', {'message': message})
+
+@socketio.on('join_player_room')
+def handle_join_player_room(data=None):
+    """Handle player joining their personal room"""
+    if not current_user.is_authenticated:
+        print(f"DEBUG: Unauthenticated user trying to join room")
+        return
+    
+    player_id = current_user.id
+    room_name = f"player_{player_id}"
+    join_room(room_name)
+    print(f"DEBUG: Player {player_id} joined room: {room_name}")
+    
+    # Check if player is in a game
+    game_data = matchmaking.get_player_game(player_id)
+    if game_data:
+        print(f"DEBUG: Player {player_id} is in game {list(matchmaking.active_games.keys())}")
+        # Send initial game state
+        game_state = matchmaking.get_game_state(player_id)
+        if game_state:
+            print(f"DEBUG: Sending initial game state to player {player_id}")
+            emit('game_state_update', game_state)
+    else:
+        print(f"DEBUG: Player {player_id} is not in a game")
 
 
 
@@ -221,6 +300,27 @@ def game():
     if current_game is None:
         current_game = Game()
     return render_template('game.html', game=current_game, characters=CHARACTERS, user=current_user)
+
+@app.route('/multiplayer')
+@login_required
+def multiplayer_game():
+    # Check if user has a current hand selected
+    current_hand_data = current_user.misc2
+    if not current_hand_data:
+        # No hand selected, redirect to index with message
+        flash('Please select a battle hand before starting a multiplayer game.', 'warning')
+        return redirect(url_for('index'))
+    
+    try:
+        current_hand = json.loads(current_hand_data)
+        if not current_hand or 'cards' not in current_hand:
+            flash('Please select a valid battle hand before starting a multiplayer game.', 'warning')
+            return redirect(url_for('index'))
+    except (json.JSONDecodeError, TypeError):
+        flash('Please select a valid battle hand before starting a multiplayer game.', 'warning')
+        return redirect(url_for('index'))
+    
+    return render_template('multiplayer_game.html', user=current_user)
 
 @app.route('/collection')
 @login_required
