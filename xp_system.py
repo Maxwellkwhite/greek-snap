@@ -9,10 +9,10 @@ LEVEL_XP_REQUIREMENTS = {
     4: 450,    # 200 more XP to reach level 4
     5: 700,    # 250 more XP to reach level 5
     6: 1000,   # 300 more XP to reach level 6
-    7: 1350,   # 350 more XP to reach level 7
-    8: 1750,   # 400 more XP to reach level 8
-    9: 2200,   # 450 more XP to reach level 9
-    10: 2700,  # 500 more XP to reach level 10
+    7: 1300,   # 350 more XP to reach level 7
+    8: 1800,   # 400 more XP to reach level 8
+    9: 2350,   # 450 more XP to reach level 9
+    10: 3000,  # 500 more XP to reach level 10
     # Add more levels here as needed:
     # 11: 3250,
     # 12: 3850,
@@ -25,12 +25,12 @@ LEVEL_REWARDS = {
     2: [11],          # Level 2 - unlock Zeus card (ID: 1)
     3: [12],          # Level 3 - unlock Athena card (ID: 4)
     4: [13],          # Level 4 - unlock Poseidon card (ID: 2)
-    5: [],          # Level 5 - unlock Ares card (ID: 7)
-    6: [],          # Level 6 - unlock Apollo card (ID: 5)
-    7: [],          # Level 7 - unlock Artemis card (ID: 6)
-    8: [],         # Level 8 - unlock Hermes card (ID: 10)
-    9: [],         # Level 9 - unlock Dionysus card (ID: 11)
-    10: [],         # Level 10 - unlock Hades card (ID: 3)
+    5: [14],          # Level 5 - unlock Ares card (ID: 7)
+    6: [15],          # Level 6 - unlock Apollo card (ID: 5)
+    7: [16],          # Level 7 - unlock Artemis card (ID: 6)
+    8: [17],         # Level 8 - unlock Hermes card (ID: 10)
+    9: [18],         # Level 9 - unlock Dionysus card (ID: 11)
+    10: [19],         # Level 10 - unlock Hades card (ID: 3)
     # Add more rewards here as needed:
     # 11: [8],        # Hephaestus (ID: 8)
     # 12: [9],        # Aphrodite (ID: 9)
@@ -41,7 +41,7 @@ LEVEL_REWARDS = {
 # XP sources and amounts
 XP_SOURCES = {
     "game_win": 100,      # XP for winning a game
-    "game_loss": 100,     # XP for losing a game (participation)
+    "game_loss": 15,     # XP for losing a game (participation)
     "first_win_of_day": 25,  # Bonus XP for first win of the day
     "card_played": 0,    # XP for playing a card
     "location_captured": 0, # XP for capturing a location
