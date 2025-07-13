@@ -5,6 +5,16 @@ from collections import defaultdict
 from flask_socketio import emit, join_room, leave_room
 from game import Game
 from cards_data import CHARACTERS
+from xp_system import XPSystem
+
+# Global database and user model references (will be set from main.py)
+db = None
+User = None
+
+def set_database(database, user_model):
+    global db, User
+    db = database
+    User = user_model
 
 # Global socketio instance (will be set from main.py)
 socketio = None
@@ -260,14 +270,29 @@ class MatchmakingSystem:
         
         # Check if game is over
         if game_data['game'].game_over:
+            # Award XP to both players
+            self._award_xp_for_game(game_data)
+            
+            # Send personalized winner to each player
+            # For player1: "player" means they won, "opponent" means they lost
+            # For player2: "opponent" means they won, "player" means they lost
+            player1_winner = game_data['game'].winner  # "player" = win, "opponent" = lose
+            player2_winner = "opponent" if game_data['game'].winner == "player" else "player"  # Opposite for player2
+            
+            # Get XP info for each player
+            player1_xp_info = self._get_xp_info(game_data['player1_id'], player1_winner)
+            player2_xp_info = self._get_xp_info(game_data['player2_id'], player2_winner)
+            
             socketio.emit('game_over', {
-                'winner': game_data['game'].winner,
-                'game_id': self._get_game_id_by_data(game_data)
+                'winner': player1_winner,
+                'game_id': self._get_game_id_by_data(game_data),
+                'xp_info': player1_xp_info
             }, room=f"player_{game_data['player1_id']}")
             
             socketio.emit('game_over', {
-                'winner': game_data['game'].winner,
-                'game_id': self._get_game_id_by_data(game_data)
+                'winner': player2_winner,
+                'game_id': self._get_game_id_by_data(game_data),
+                'xp_info': player2_xp_info
             }, room=f"player_{game_data['player2_id']}")
     
     def _get_game_id_by_data(self, game_data):
@@ -276,6 +301,84 @@ class MatchmakingSystem:
             if data == game_data:
                 return game_id
         return None
+    
+    def _award_xp_for_game(self, game_data):
+        """Award XP to both players based on game result"""
+        if not db or not User:
+            print("WARNING: Database not initialized, cannot award XP")
+            return
+        
+        try:
+            # Determine XP source for each player
+            if game_data['game'].winner == "player":
+                # Player 1 won, Player 2 lost
+                player1_xp_source = "game_win"
+                player2_xp_source = "game_loss"
+            elif game_data['game'].winner == "opponent":
+                # Player 2 won, Player 1 lost
+                player1_xp_source = "game_loss"
+                player2_xp_source = "game_win"
+            else:
+                # Tie - both get loss XP
+                player1_xp_source = "game_loss"
+                player2_xp_source = "game_loss"
+            
+            # Award XP to player 1
+            player1 = User.query.get(game_data['player1_id'])
+            if player1:
+                xp_amount = XPSystem.get_xp_source_amount(player1_xp_source)
+                player1.xp += xp_amount
+                print(f"Awarded {xp_amount} XP to player {player1.id} ({player1_xp_source})")
+            
+            # Award XP to player 2
+            player2 = User.query.get(game_data['player2_id'])
+            if player2:
+                xp_amount = XPSystem.get_xp_source_amount(player2_xp_source)
+                player2.xp += xp_amount
+                print(f"Awarded {xp_amount} XP to player {player2.id} ({player2_xp_source})")
+            
+            # Commit changes
+            db.session.commit()
+            
+        except Exception as e:
+            print(f"Error awarding XP: {e}")
+            db.session.rollback()
+    
+    def _get_xp_info(self, player_id, winner):
+        """Get XP information for a player after game ends"""
+        if not db or not User:
+            return None
+        
+        try:
+            user = User.query.get(player_id)
+            if not user:
+                return None
+            
+            # Determine XP source
+            if winner == "player":
+                xp_source = "game_win"
+            else:
+                xp_source = "game_loss"
+            
+            xp_amount = XPSystem.get_xp_source_amount(xp_source)
+            old_level = XPSystem.get_level_from_xp(user.xp - xp_amount)  # Level before XP award
+            new_level = XPSystem.get_level_from_xp(user.xp)  # Level after XP award
+            xp_for_next = XPSystem.get_xp_for_next_level(user.xp)
+            progress = XPSystem.get_progress_to_next_level(user.xp)
+            
+            return {
+                "xp_awarded": xp_amount,
+                "new_total_xp": user.xp,
+                "old_level": old_level,
+                "new_level": new_level,
+                "leveled_up": new_level > old_level,
+                "xp_for_next": xp_for_next,
+                "progress": progress
+            }
+            
+        except Exception as e:
+            print(f"Error getting XP info: {e}")
+            return None
 
 # Global matchmaking instance
 matchmaking = MatchmakingSystem() 

@@ -501,6 +501,29 @@ class MultiplayerGame {
             resultText = '<h4 class="text-warning"><i class="fas fa-handshake me-2"></i>It\'s a Tie!</h4>';
         }
         
+        // Add XP information if available
+        if (data.xp_info) {
+            const xpInfo = data.xp_info;
+            resultText += `
+                <div class="mt-3">
+                    <div class="alert alert-info">
+                        <i class="fas fa-star me-2"></i>
+                        <strong>+${xpInfo.xp_awarded} XP!</strong>
+                        <br>
+                        Total XP: ${xpInfo.new_total_xp}
+                        ${xpInfo.leveled_up ? '<br><span class="text-success"><i class="fas fa-level-up-alt me-1"></i>Level Up! You are now level ' + xpInfo.new_level + '</span>' : ''}
+                    </div>
+                    <div class="progress mb-2">
+                        <div class="progress-bar" role="progressbar" style="width: ${xpInfo.progress}%" 
+                             aria-valuenow="${xpInfo.progress}" aria-valuemin="0" aria-valuemax="100">
+                            ${xpInfo.progress.toFixed(1)}%
+                        </div>
+                    </div>
+                    <small class="text-muted">${xpInfo.xp_for_next} XP to next level</small>
+                </div>
+            `;
+        }
+        
         gameResult.innerHTML = resultText;
         modal.show();
     }

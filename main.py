@@ -23,7 +23,7 @@ bootstrap = Bootstrap(app)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Set socketio instance in matchmaking
-from matchmaking import set_socketio
+from matchmaking import set_socketio, set_database
 set_socketio(socketio)
 
 # Configuration
@@ -70,6 +70,9 @@ class UserCollection(db.Model):
     
     # Relationship to user
     user = relationship("User", back_populates="collection")
+
+# Set database instance in matchmaking
+set_database(db, User)
 
 # Global game instance
 current_game = None
