@@ -283,8 +283,13 @@ class MatchmakingSystem:
             # Send personalized winner to each player
             # For player1: "player" means they won, "opponent" means they lost
             # For player2: "opponent" means they won, "player" means they lost
-            player1_winner = game_data['game'].winner  # "player" = win, "opponent" = lose
-            player2_winner = "opponent" if game_data['game'].winner == "player" else "player"  # Opposite for player2
+            # For ties: both players should see "tie"
+            if game_data['game'].winner == "tie":
+                player1_winner = "tie"
+                player2_winner = "tie"
+            else:
+                player1_winner = game_data['game'].winner  # "player" = win, "opponent" = lose
+                player2_winner = "opponent" if game_data['game'].winner == "player" else "player"  # Opposite for player2
             
             # Get XP info for each player
             player1_xp_info = self._get_xp_info(game_data['player1_id'], player1_winner)
