@@ -6,7 +6,7 @@ from effect_system import EffectHandler
 class Game:
     def __init__(self, player_deck_ids=None):
         self.turn = 1
-        self.max_turns = 5
+        self.max_turns = 1
         self.current_player = "player1"  # Track whose turn it is
         self.player_hand = []
         self.opponent_hand = []

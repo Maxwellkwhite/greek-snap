@@ -61,6 +61,16 @@ class MultiplayerGame {
             console.log('Turn ended:', data);
             this.showNotification(data.message, 'info');
         });
+        
+        this.socket.on('opponent_left', (data) => {
+            console.log('Opponent left:', data);
+            this.showOpponentLeftModal(data.message);
+        });
+        
+        this.socket.on('game_left', (data) => {
+            console.log('Game left:', data);
+            this.showNotification(data.message, 'info');
+        });
     }
 
     setupEventListeners() {
@@ -76,8 +86,17 @@ class MultiplayerGame {
             modal.hide();
         });
 
+        // Leave game button
+        document.getElementById('leaveGameBtn').addEventListener('click', () => {
+            if (confirm('Are you sure you want to leave the game? Your opponent will win by default.')) {
+                this.leaveGame();
+                window.location.href = '/';
+            }
+        });
+
         // Back to menu button in modal
         document.getElementById('backToMenuBtn').addEventListener('click', () => {
+            this.leaveGame();
             window.location.href = '/';
         });
 
@@ -85,6 +104,15 @@ class MultiplayerGame {
         document.getElementById('cardDetailModal').addEventListener('hidden.bs.modal', () => {
             // Reset modal content when closed
             this.resetModalContent();
+        });
+
+        // Only handle actual page unload (closing browser/tab)
+        // Don't handle navigation events as they cause issues
+        window.addEventListener('beforeunload', (e) => {
+            if (this.gameState && this.gameState.game_over === false) {
+                console.log('Page unloading - leaving game');
+                this.leaveGame();
+            }
         });
     }
 
@@ -124,6 +152,14 @@ class MultiplayerGame {
 
         // Update turn indicator
         this.updateTurnIndicator();
+
+        // Show/hide leave game button based on game state
+        const leaveGameBtn = document.getElementById('leaveGameBtn');
+        if (this.gameState.game_over === false) {
+            leaveGameBtn.style.display = 'block';
+        } else {
+            leaveGameBtn.style.display = 'none';
+        }
 
         // Update turn and energy display
         document.getElementById('turnDisplay').textContent = this.gameState.turn;
@@ -950,6 +986,61 @@ class MultiplayerGame {
         document.getElementById('modalCardAbility').textContent = '';
         document.getElementById('modalPowerBreakdown').innerHTML = '';
         document.getElementById('modalCostBreakdown').innerHTML = ''; // Reset cost breakdown
+    }
+
+    leaveGame() {
+        // Only leave if we have a socket connection and are in an active game
+        if (this.socket && this.gameState && this.gameState.game_over === false) {
+            console.log('Leaving game...');
+            this.socket.emit('leave_game');
+        } else {
+            console.log('Not leaving game - either no socket, no game state, or game is already over');
+        }
+    }
+
+    showOpponentLeftModal(message) {
+        // Create a modal to show that the opponent left
+        const modalHtml = `
+            <div class="modal fade" id="opponentLeftModal" tabindex="-1" aria-labelledby="opponentLeftModalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="opponentLeftModalLabel">
+                                <i class="fas fa-user-times text-warning me-2"></i>Opponent Left
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p>${message}</p>
+                            <p class="text-muted">You have won this match by default.</p>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-primary" onclick="window.location.href='/'">
+                                <i class="fas fa-home me-2"></i>Back to Menu
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Remove existing modal if it exists
+        const existingModal = document.getElementById('opponentLeftModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+        
+        // Add new modal to body
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        
+        // Show the modal
+        const modal = new bootstrap.Modal(document.getElementById('opponentLeftModal'));
+        modal.show();
+        
+        // Clean up modal when hidden
+        document.getElementById('opponentLeftModal').addEventListener('hidden.bs.modal', () => {
+            document.getElementById('opponentLeftModal').remove();
+        });
     }
 }
 

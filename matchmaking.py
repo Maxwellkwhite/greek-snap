@@ -160,13 +160,20 @@ class MatchmakingSystem:
         """Remove a player from their current game"""
         game_id = self.player_to_game.get(player_id)
         if game_id and game_id in self.active_games:
+            game_data = self.active_games[game_id]
+            other_player = game_data.get('player2_id') if game_data.get('player1_id') == player_id else game_data.get('player1_id')
+            
+            print(f"Removing player {player_id} from game {game_id}")
+            if other_player:
+                print(f"Also removing other player {other_player} from game {game_id}")
+            
             del self.active_games[game_id]
             del self.player_to_game[player_id]
             # Also remove the other player
-            game_data = self.active_games.get(game_id, {})
-            other_player = game_data.get('player2_id') if game_data.get('player1_id') == player_id else game_data.get('player1_id')
             if other_player:
                 del self.player_to_game[other_player]
+            
+            print(f"Game {game_id} cleaned up. Active games remaining: {len(self.active_games)}")
     
     def get_queue_status(self, player_id):
         """Get the current status of a player in the queue"""
@@ -294,6 +301,10 @@ class MatchmakingSystem:
                 'game_id': self._get_game_id_by_data(game_data),
                 'xp_info': player2_xp_info
             }, room=f"player_{game_data['player2_id']}")
+            
+            # Remove both players from the game after it ends
+            print(f"Game {self._get_game_id_by_data(game_data)} ended, removing players {game_data['player1_id']} and {game_data['player2_id']}")
+            self.remove_player_from_game(game_data['player1_id'])
     
     def _get_game_id_by_data(self, game_data):
         """Get game ID from game data"""

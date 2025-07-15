@@ -85,6 +85,15 @@ def handle_connect():
 @socketio.on('disconnect')
 def handle_disconnect():
     print(f"Client disconnected: {request.sid}")
+    
+    # Don't automatically remove players on disconnect
+    # Let the frontend handle explicit game leaving
+    # This prevents issues with page navigation
+    if current_user.is_authenticated:
+        player_id = current_user.id
+        print(f"Player {player_id} disconnected - not removing from queue/game automatically")
+    else:
+        print("Unauthenticated client disconnected")
 
 @socketio.on('join_queue')
 def handle_join_queue(data):
@@ -230,6 +239,45 @@ def handle_join_player_room(data=None):
             emit('game_state_update', game_state)
     else:
         print(f"DEBUG: Player {player_id} is not in a game")
+
+@socketio.on('leave_game')
+def handle_leave_game(data=None):
+    """Handle player manually leaving a game"""
+    if not current_user.is_authenticated:
+        emit('game_error', {'message': 'You must be logged in to leave a game'})
+        return
+    
+    player_id = current_user.id
+    print(f"Player {player_id} manually leaving game")
+    
+    # Remove from queue first
+    matchmaking.remove_player_from_queue(player_id)
+    
+    # Remove from game
+    game_data = matchmaking.get_player_game(player_id)
+    if game_data:
+        # Get the other player's ID
+        other_player_id = game_data['player2_id'] if game_data['player1_id'] == player_id else game_data['player1_id']
+        game_id = matchmaking._get_game_id_by_data(game_data)
+        
+        print(f"Player {player_id} was in game {game_id} with opponent {other_player_id}")
+        
+        # Notify the other player that their opponent left
+        if socketio:
+            socketio.emit('opponent_left', {
+                'message': 'Your opponent has left the game',
+                'game_id': game_id
+            }, room=f"player_{other_player_id}")
+            print(f"Notified player {other_player_id} that opponent left")
+        
+        # Remove both players from the game
+        matchmaking.remove_player_from_game(player_id)
+        
+        emit('game_left', {'message': 'Successfully left the game'})
+        print(f"Player {player_id} successfully left game {game_id}")
+    else:
+        print(f"Player {player_id} tried to leave but was not in a game")
+        emit('game_error', {'message': 'You are not in a game'})
 
 
 

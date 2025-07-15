@@ -82,8 +82,15 @@
 <body>
     <!-- Turn Indicator -->
     <div class="turn-indicator" id="turnIndicator">
-        <i class="fas fa-clock me-2"></i>
-        <span id="turnText">Waiting for opponent...</span>
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <i class="fas fa-clock me-2"></i>
+                <span id="turnText">Waiting for opponent...</span>
+            </div>
+            <button class="btn btn-outline-light btn-sm" id="leaveGameBtn" style="display: none;">
+                <i class="fas fa-sign-out-alt me-1"></i>Leave Game
+            </button>
+        </div>
     </div>
 
     <!-- Waiting for Game Modal -->
