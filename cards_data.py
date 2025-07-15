@@ -177,6 +177,99 @@ CHARACTERS = [
         "description": "Reduce opponent's power by 2"
     }
     },
+{
+    "id": 14,
+    "name": "Test Card 14",
+    "power": 1,
+    "cost": 1,
+    "ability": "No ability.",
+    "ability_type": "none",
+    "ability_effect": {
+        "type": "none",
+        "value": 0,
+        "target": "none",
+        "description": "No ability"
+    }
+},
+{
+    "id": 15,
+    "name": "Test Card 15",
+    "power": 2,
+    "cost": 2,
+    "ability": "Ongoing: Reduce opponent's power by 1.",
+    "ability_type": "ongoing",
+    "ability_effect": {
+        "type": "reduce_opponent_power",
+        "value": 1,
+        "description": "Reduce opponent's power by 1"
+    }
+},
+{
+    "id": 16,
+    "name": "Test Card 16",
+    "power": 3,
+    "cost": 3,
+    "ability": "On Reveal: Draw 1 card.",
+    "ability_type": "on_reveal",
+    "ability_effect": {
+        "type": "draw_cards",
+        "value": 1,
+        "description": "Draw 1 card"
+    }
+},
+{
+    "id": 17,
+    "name": "Test Card 17",
+    "power": 4,
+    "cost": 4,
+    "ability": "Ongoing: All cards here have -1 Power.",
+    "ability_type": "ongoing",
+    "ability_effect": {
+        "type": "reduce_all_power",
+        "value": 1,
+        "description": "Reduce all cards' power by 1"
+    }
+},
+{
+    "id": 18,
+    "name": "Test Card 18",
+    "power": 5,
+    "cost": 5,
+    "ability": "On Reveal: Destroy one of your cards here.",
+    "ability_type": "on_reveal",
+    "ability_effect": {
+        "type": "destroy_card",
+        "value": 1,
+        "target": "own",
+        "description": "Destroy one of your own cards at this location"
+    }
+},
+{
+    "id": 19,
+    "name": "Test Card 19",
+    "power": 6,
+    "cost": 6,
+    "ability": "Ongoing: Opponent's cards here have -2 Power.",
+    "ability_type": "ongoing",
+    "ability_effect": {
+        "type": "reduce_opponent_power",
+        "value": 2,
+        "description": "Reduce opponent's power by 2"
+    }
+},
+{
+    "id": 20,
+    "name": "Test Card 20",
+    "power": 7,
+    "cost": 7,
+    "ability": "On Reveal: Draw 2 cards.",
+    "ability_type": "on_reveal",
+    "ability_effect": {
+        "type": "draw_cards",
+        "value": 2,
+        "description": "Draw 2 cards"
+    }
+}
 
 ]
 
