@@ -79,12 +79,7 @@ class MultiplayerGame {
             this.endTurn();
         });
 
-        // Play again button in modal
-        document.getElementById('playAgainBtn').addEventListener('click', () => {
-            this.playAgain();
-            const modal = bootstrap.Modal.getInstance(document.getElementById('gameOverModal'));
-            modal.hide();
-        });
+
 
         // Leave game button
         document.getElementById('leaveGameBtn').addEventListener('click', () => {
@@ -526,10 +521,7 @@ class MultiplayerGame {
         this.socket.emit('end_turn', {});
     }
 
-    async playAgain() {
-        // Redirect to matchmaking
-        window.location.href = '/';
-    }
+
 
     async showGameOver(data) {
         const modal = new bootstrap.Modal(document.getElementById('gameOverModal'));
