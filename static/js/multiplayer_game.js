@@ -8,13 +8,14 @@ class MultiplayerGame {
         this.socket = null;
         this.myPlayerId = null;
         this.gameId = null;
+        this.inQueue = false;
         this.init();
     }
 
     init() {
         this.setupSocket();
         this.setupEventListeners();
-        this.showWaitingIndicator();
+        this.showWaitingIndicator('Connecting to server...');
     }
 
     setupSocket() {
@@ -24,12 +25,34 @@ class MultiplayerGame {
         // Socket event listeners
         this.socket.on('connect', () => {
             console.log('Connected to server');
+            this.showWaitingIndicator('Joining matchmaking queue...');
             this.joinPlayerRoom();
+            // Automatically join the queue when connected
+            this.joinQueue();
+        });
+        
+        this.socket.on('queue_joined', (data) => {
+            console.log('Queue joined:', data);
+            this.inQueue = true;
+            this.showWaitingIndicator('Waiting for opponent to join...');
+        });
+        
+        this.socket.on('queue_error', (data) => {
+            console.error('Queue error:', data);
+            this.showError(data.message);
+            this.hideWaitingIndicator();
+        });
+        
+        this.socket.on('queue_left', (data) => {
+            console.log('Queue left:', data);
+            this.inQueue = false;
+            this.hideWaitingIndicator();
         });
         
         this.socket.on('game_found', (data) => {
             console.log('Game found:', data);
             this.gameId = data.game_id;
+            this.inQueue = false;
             this.hideWaitingIndicator();
             console.log('Requesting game state after game found');
             this.requestGameState();
@@ -63,13 +86,23 @@ class MultiplayerGame {
         });
         
         this.socket.on('opponent_left', (data) => {
-            console.log('Opponent left:', data);
+            console.log('Opponent left event received:', data);
+            console.log('Current game state:', this.gameState);
             this.showOpponentLeftModal(data.message);
         });
         
         this.socket.on('game_left', (data) => {
             console.log('Game left:', data);
             this.showNotification(data.message, 'info');
+            // Redirect to home page after successfully leaving
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 1000);
+        });
+        
+        this.socket.on('disconnect', () => {
+            console.log('Disconnected from server');
+            this.showError('Connection lost. Please refresh the page.');
         });
     }
 
@@ -84,8 +117,9 @@ class MultiplayerGame {
         // Leave game button
         document.getElementById('leaveGameBtn').addEventListener('click', () => {
             if (confirm('Are you sure you want to leave the game? Your opponent will win by default.')) {
+                console.log('Leave game button clicked');
                 this.leaveGame();
-                window.location.href = '/';
+                // Don't redirect immediately - let the server handle it
             }
         });
 
@@ -101,12 +135,36 @@ class MultiplayerGame {
             this.resetModalContent();
         });
 
-        // Only handle actual page unload (closing browser/tab)
-        // Don't handle navigation events as they cause issues
+        // Handle page unload (closing browser/tab) and navigation
         window.addEventListener('beforeunload', (e) => {
             if (this.gameState && this.gameState.game_over === false) {
-                console.log('Page unloading - leaving game');
+                console.log('Page unloading/navigating - leaving game');
                 this.leaveGame();
+            } else if (this.inQueue) {
+                console.log('Page unloading/navigating - leaving queue');
+                this.leaveQueue();
+            }
+        });
+        
+        // Also handle popstate (back/forward button)
+        window.addEventListener('popstate', (e) => {
+            if (this.gameState && this.gameState.game_over === false) {
+                console.log('Navigation detected - leaving game');
+                this.leaveGame();
+            } else if (this.inQueue) {
+                console.log('Navigation detected - leaving queue');
+                this.leaveQueue();
+            }
+        });
+        
+        // Handle page hide (more reliable for navigation)
+        window.addEventListener('pagehide', (e) => {
+            if (this.gameState && this.gameState.game_over === false) {
+                console.log('Page hiding - leaving game');
+                this.leaveGame();
+            } else if (this.inQueue) {
+                console.log('Page hiding - leaving queue');
+                this.leaveQueue();
             }
         });
     }
@@ -116,13 +174,39 @@ class MultiplayerGame {
         this.socket.emit('join_player_room');
     }
 
+    joinQueue() {
+        if (this.inQueue) {
+            console.log('Already in queue, not joining again.');
+            return;
+        }
+        console.log('Joining matchmaking queue...');
+        this.socket.emit('join_queue', {});
+    }
+
+    leaveQueue() {
+        if (!this.inQueue) {
+            console.log('Not in queue, not leaving.');
+            return;
+        }
+        console.log('Leaving matchmaking queue...');
+        this.socket.emit('leave_queue', {});
+        this.inQueue = false;
+    }
+
     requestGameState() {
         console.log('Requesting game state from server');
         this.socket.emit('get_game_state', {});
     }
 
-    showWaitingIndicator() {
-        document.getElementById('waitingIndicator').style.display = 'block';
+    showWaitingIndicator(message = 'Waiting for opponent...') {
+        const waitingIndicator = document.getElementById('waitingIndicator');
+        const waitingMessage = document.getElementById('waitingMessage');
+        if (waitingIndicator) {
+            waitingIndicator.style.display = 'block';
+            if (waitingMessage) {
+                waitingMessage.textContent = message;
+            }
+        }
     }
 
     hideWaitingIndicator() {
@@ -981,16 +1065,32 @@ class MultiplayerGame {
     }
 
     leaveGame() {
-        // Only leave if we have a socket connection and are in an active game
+        console.log('leaveGame() called');
+        console.log('Socket exists:', !!this.socket);
+        console.log('Game state exists:', !!this.gameState);
+        console.log('Game over:', this.gameState?.game_over);
+        console.log('In queue:', this.inQueue);
+        
+        // Try to leave game if we have a socket connection and are in an active game
         if (this.socket && this.gameState && this.gameState.game_over === false) {
-            console.log('Leaving game...');
-            this.socket.emit('leave_game');
+            console.log('Emitting leave_game event...');
+            try {
+                this.socket.emit('leave_game');
+                console.log('leave_game event sent successfully');
+            } catch (error) {
+                console.error('Error sending leave_game event:', error);
+            }
+        } else if (this.socket && this.inQueue) {
+            console.log('Leaving queue instead of game...');
+            this.leaveQueue();
         } else {
             console.log('Not leaving game - either no socket, no game state, or game is already over');
         }
     }
 
     showOpponentLeftModal(message) {
+        console.log('showOpponentLeftModal called with message:', message);
+        
         // Create a modal to show that the opponent left
         const modalHtml = `
             <div class="modal fade" id="opponentLeftModal" tabindex="-1" aria-labelledby="opponentLeftModalLabel" aria-hidden="true">
@@ -1019,15 +1119,23 @@ class MultiplayerGame {
         // Remove existing modal if it exists
         const existingModal = document.getElementById('opponentLeftModal');
         if (existingModal) {
+            console.log('Removing existing opponent left modal');
             existingModal.remove();
         }
         
         // Add new modal to body
         document.body.insertAdjacentHTML('beforeend', modalHtml);
+        console.log('Added opponent left modal to body');
         
         // Show the modal
-        const modal = new bootstrap.Modal(document.getElementById('opponentLeftModal'));
-        modal.show();
+        const modalElement = document.getElementById('opponentLeftModal');
+        if (modalElement) {
+            const modal = new bootstrap.Modal(modalElement);
+            modal.show();
+            console.log('Showed opponent left modal');
+        } else {
+            console.error('Could not find opponent left modal element');
+        }
         
         // Clean up modal when hidden
         document.getElementById('opponentLeftModal').addEventListener('hidden.bs.modal', () => {

@@ -175,6 +175,13 @@ class MatchmakingSystem:
             
             print(f"Game {game_id} cleaned up. Active games remaining: {len(self.active_games)}")
     
+    def get_opponent_id(self, player_id):
+        """Get the opponent's ID for a player in a game"""
+        game_data = self.get_player_game(player_id)
+        if game_data:
+            return game_data.get('player2_id') if game_data.get('player1_id') == player_id else game_data.get('player1_id')
+        return None
+    
     def get_queue_status(self, player_id):
         """Get the current status of a player in the queue"""
         with self.lock:
