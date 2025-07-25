@@ -56,7 +56,6 @@ class SinglePlayerGame {
                 this.gameState = data.game_state;
                 this.isPlayerTurn = true;
                 this.updateUI();
-                this.showNotification('New game started!', 'success');
             } else {
                 this.showError(data.message);
             }
@@ -426,7 +425,6 @@ class SinglePlayerGame {
             if (data.success) {
                 this.gameState = data.game_state;
                 this.updateUI();
-                this.showNotification(data.message, 'success');
                 
                 // Check if game is over after playing card
                 if (this.gameState.game_over) {
@@ -498,7 +496,6 @@ class SinglePlayerGame {
                         if (data.success) {
                             this.gameState = data.game_state;
                             this.updateUI();
-                            this.showNotification('AI played a card', 'info');
                             
                             // Check if game is over after AI move
                             if (this.gameState.game_over) {
@@ -550,7 +547,6 @@ class SinglePlayerGame {
                 this.gameState = data.game_state;
                 this.isPlayerTurn = true;
                 this.updateUI();
-                this.showNotification('AI ended its turn', 'info');
                 
                 // Check if game is over
                 if (this.gameState.game_over) {
@@ -584,7 +580,6 @@ class SinglePlayerGame {
                 this.gameState = data.game_state;
                 this.isPlayerTurn = false;
                 this.updateUI();
-                this.showNotification(data.message, 'info');
                 
                 // Check if game is over
                 if (this.gameState.game_over) {
