@@ -6,14 +6,10 @@ from effect_system import EffectHandler
 class Game:
     def __init__(self, player_deck_ids=None):
         self.turn = 1
-        self.max_turns = 1
-        self.current_player = "player1"  # Track whose turn it is
+        self.max_turns = 5
+        self.current_player = "player"  # Track whose turn it is
         self.player_hand = []
         self.opponent_hand = []
-        
-        # Multiplayer turn tracking
-        self.player1_ready_for_next_turn = False
-        self.player2_ready_for_next_turn = False
         
         # Set up player deck based on selected hand
         if player_deck_ids:
@@ -58,20 +54,16 @@ class Game:
         # Set up locations
         self.setup_locations()
     
-    def is_player_turn(self, player_id):
-        """Check if it's the given player's turn"""
-        if player_id == "player1":
-            return self.current_player == "player1"
-        elif player_id == "player2":
-            return self.current_player == "player2"
-        return False
+    def is_player_turn(self, player_id=None):
+        """Check if it's the player's turn"""
+        return self.current_player == "player"
     
     def switch_turn(self):
         """Switch to the other player's turn"""
-        if self.current_player == "player1":
-            self.current_player = "player2"
+        if self.current_player == "player":
+            self.current_player = "opponent"
         else:
-            self.current_player = "player1"
+            self.current_player = "player"
     
     def get_current_player(self):
         """Get the current player's ID"""
@@ -209,15 +201,13 @@ class Game:
         return base_power + power_modifier
 
     def end_turn(self, player_id=None):
-        # Check if it's the player's turn (for multiplayer)
-        if player_id and not self.is_player_turn(player_id):
-            return False, "Not your turn"
-        
-        # Mark this player as ready for next turn
-        if player_id == "player1":
-            self.player1_ready_for_next_turn = True
-        elif player_id == "player2":
-            self.player2_ready_for_next_turn = True
+        # In single player mode, we're more permissive about turn ending
+        # Only check turn if a specific player_id is provided
+        if player_id:
+            if player_id == "player" and not self.is_player_turn():
+                return False, "Not your turn"
+            elif player_id == "opponent" and self.is_player_turn():
+                return False, "Not your turn"
         
         # Process all pending On Reveal effects
         for effect in self.pending_on_reveal_effects:
@@ -227,9 +217,12 @@ class Game:
         # Process all pending location draw effects
         EffectHandler.process_pending_location_draw_effects(self)
         
-        # Check if both players are ready for next turn
-        if self.player1_ready_for_next_turn and self.player2_ready_for_next_turn:
-            # Both players have ended their turn, advance to next turn
+        # Switch turns
+        self.switch_turn()
+        
+        # If we've switched back to the player, it means both players have had their turn
+        if self.current_player == "player":
+            # Advance to next turn
             if self.turn < self.max_turns:
                 # Store unused energy for next turn
                 self.player_unused_energy = self.player_energy
@@ -245,19 +238,9 @@ class Game:
                 # Draw cards
                 self.draw_cards(1, "player")
                 self.draw_cards(1, "opponent")
-                
-                # Reset ready flags for new turn
-                self.player1_ready_for_next_turn = False
-                self.player2_ready_for_next_turn = False
-                
-                # Start with player1's turn
-                self.current_player = "player1"
             else:
                 self.game_over = True
                 self.calculate_winner()
-        else:
-            # Only one player has ended their turn, switch to other player
-            self.switch_turn()
         
         return True, "Turn ended successfully"
     
@@ -301,25 +284,11 @@ class Game:
                 card_data["modified_power"] = self.calculate_card_power(card, location, "opponent")
                 opponent_cards_with_power.append(card_data)
             
-            # Map cards to the correct sides based on player_id
-            if player_id == "player1":
-                # Player 1 sees their cards as player_cards and opponent's cards as opponent_cards
-                my_cards = player_cards_with_power
-                opponent_cards = opponent_cards_with_power
-                my_power = player_power
-                opponent_power = opponent_power
-            elif player_id == "player2":
-                # Player 2 sees their cards as player_cards and opponent's cards as opponent_cards
-                my_cards = opponent_cards_with_power
-                opponent_cards = player_cards_with_power
-                my_power = opponent_power
-                opponent_power = player_power
-            else:
-                # Default fallback (for single player mode)
-                my_cards = player_cards_with_power
-                opponent_cards = opponent_cards_with_power
-                my_power = player_power
-                opponent_power = opponent_power
+            # For single player mode, player always sees their cards as player_cards
+            my_cards = player_cards_with_power
+            opponent_cards = opponent_cards_with_power
+            my_power = player_power
+            opponent_power = opponent_power
             
             location_data = location.copy()
             location_data["player_cards"] = my_cards
@@ -328,37 +297,15 @@ class Game:
             location_data["opponent_power"] = opponent_power
             locations_with_power.append(location_data)
         
-        # Determine which hand and energy to show based on player_id
-        if player_id == "player1":
-            # Player 1 sees their own hand and energy
-            my_hand = self.player_hand
-            my_energy = self.player_energy
-            my_unused_energy = self.player_unused_energy
-            my_hand_cost_increase = self.player_hand_cost_increase
-            opponent_hand = self.opponent_hand
-            opponent_energy = self.opponent_energy
-            opponent_unused_energy = self.opponent_unused_energy
-            opponent_hand_cost_increase = self.opponent_hand_cost_increase
-        elif player_id == "player2":
-            # Player 2 sees their own hand and energy (which is the opponent's from the game's perspective)
-            my_hand = self.opponent_hand
-            my_energy = self.opponent_energy
-            my_unused_energy = self.opponent_unused_energy
-            my_hand_cost_increase = self.opponent_hand_cost_increase
-            opponent_hand = self.player_hand
-            opponent_energy = self.player_energy
-            opponent_unused_energy = self.player_unused_energy
-            opponent_hand_cost_increase = self.player_hand_cost_increase
-        else:
-            # Default fallback (for single player mode)
-            my_hand = self.player_hand
-            my_energy = self.player_energy
-            my_unused_energy = self.player_unused_energy
-            my_hand_cost_increase = self.player_hand_cost_increase
-            opponent_hand = self.opponent_hand
-            opponent_energy = self.opponent_energy
-            opponent_unused_energy = self.opponent_unused_energy
-            opponent_hand_cost_increase = self.opponent_hand_cost_increase
+        # For single player mode, player always sees their own hand and energy
+        my_hand = self.player_hand
+        my_energy = self.player_energy
+        my_unused_energy = self.player_unused_energy
+        my_hand_cost_increase = self.player_hand_cost_increase
+        opponent_hand = self.opponent_hand
+        opponent_energy = self.opponent_energy
+        opponent_unused_energy = self.opponent_unused_energy
+        opponent_hand_cost_increase = self.opponent_hand_cost_increase
         
         # Calculate modified costs for cards in hand
         my_hand_with_costs = []
@@ -367,9 +314,7 @@ class Game:
             # Calculate costs for each location
             card_data["location_costs"] = {}
             for i, location in enumerate(self.locations):
-                # Use the appropriate player role for cost calculation
-                player_role = "player" if player_id == "player1" else "opponent"
-                card_data["location_costs"][i] = self.calculate_card_cost(card, location, player_role)
+                card_data["location_costs"][i] = self.calculate_card_cost(card, location, "player")
             my_hand_with_costs.append(card_data)
         
         game_state = {
@@ -387,14 +332,7 @@ class Game:
             "winner": self.winner,
             "player_hand_cost_increase": my_hand_cost_increase,
             "opponent_hand_cost_increase": opponent_hand_cost_increase,
-            "player1_ready": self.player1_ready_for_next_turn,
-            "player2_ready": self.player2_ready_for_next_turn,
-            "both_players_ready": self.player1_ready_for_next_turn and self.player2_ready_for_next_turn
+            "is_my_turn": self.is_player_turn()
         }
-        
-        # Add turn information for the specific player
-        if player_id:
-            game_state["is_my_turn"] = self.is_player_turn(player_id)
-            game_state["my_player_id"] = player_id
         
         return game_state 

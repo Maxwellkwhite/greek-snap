@@ -1,9 +1,10 @@
 from flask import Flask, render_template, jsonify, request, session, redirect, url_for, flash
 from flask_bootstrap import Bootstrap
-from flask_socketio import SocketIO, emit, join_room, leave_room
 import os
 import random
 import json
+import pickle
+import base64
 from datetime import datetime
 from game import Game, CHARACTERS
 from flask_login import LoginManager, UserMixin, login_required, current_user, login_user, logout_user
@@ -12,19 +13,11 @@ from sqlalchemy import Integer, String, Date, JSON, Boolean, DateTime, func
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from xp_system import XPSystem
-from matchmaking import matchmaking
 
 app = Flask(__name__)
 
 # Initialize Bootstrap
 bootstrap = Bootstrap(app)
-
-# Initialize SocketIO
-socketio = SocketIO(app, cors_allowed_origins="*")
-
-# Set socketio instance in matchmaking
-from matchmaking import set_socketio, set_database
-set_socketio(socketio)
 
 # Configuration
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key')
@@ -71,238 +64,68 @@ class UserCollection(db.Model):
     # Relationship to user
     user = relationship("User", back_populates="collection")
 
-# Set database instance in matchmaking
-set_database(db, User)
+# Game State DB
+class GameState(db.Model):
+    __tablename__ = "game_states"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(Integer, db.ForeignKey("users.id"))
+    game_data: Mapped[JSON] = mapped_column(JSON)  # Serialized game state
+    date_created: Mapped[DateTime] = mapped_column(DateTime, default=func.now())
+    date_updated: Mapped[DateTime] = mapped_column(DateTime, default=func.now(), onupdate=func.now())
 
-# Global game instance
-current_game = None
-
-# WebSocket event handlers
-@socketio.on('connect')
-def handle_connect():
-    print(f"Client connected: {request.sid}")
-
-@socketio.on('disconnect')
-def handle_disconnect():
-    print(f"Client disconnected: {request.sid}")
-    
-    # Automatically remove players from games when they disconnect
-    if current_user.is_authenticated:
-        player_id = current_user.id
-        print(f"Player {player_id} disconnected - checking if they need to be removed from game")
-        
-        # Check if player is in a game
-        game_data = matchmaking.get_player_game(player_id)
-        if game_data:
-            # Get the other player's ID
-            other_player_id = game_data['player2_id'] if game_data['player1_id'] == player_id else game_data['player1_id']
-            game_id = matchmaking._get_game_id_by_data(game_data)
-            
-            print(f"Player {player_id} was in game {game_id} with opponent {other_player_id} - removing them")
-            
-            # Notify the other player that their opponent left
-            if socketio and other_player_id:
-                print(f"Attempting to send opponent_left event to room player_{other_player_id}")
-                socketio.emit('opponent_left', {
-                    'message': 'Your opponent has disconnected from the game',
-                    'game_id': game_id
-                }, room=f"player_{other_player_id}")
-                print(f"Notified player {other_player_id} that opponent disconnected")
-            else:
-                print(f"Could not notify opponent: socketio={bool(socketio)}, other_player_id={other_player_id}")
-            
-            # Remove both players from the game
-            matchmaking.remove_player_from_game(player_id)
-        else:
-            print(f"Player {player_id} was not in a game")
-    else:
-        print("Unauthenticated client disconnected")
-
-@socketio.on('join_queue')
-def handle_join_queue(data):
-    """Handle player joining the matchmaking queue"""
-    if not current_user.is_authenticated:
-        emit('queue_error', {'message': 'You must be logged in to join the queue'})
-        return
-    
-    player_id = current_user.id
-    
-    # Check if user has a current hand selected
-    current_hand_data = current_user.misc2
-    if not current_hand_data:
-        emit('queue_error', {'message': 'Please select a battle hand before joining the queue'})
-        return
-    
+# Helper functions for game state management
+def save_game_state(user_id, game):
+    """Save game state to database"""
     try:
-        current_hand = json.loads(current_hand_data)
-        if not current_hand or 'cards' not in current_hand:
-            emit('queue_error', {'message': 'Please select a valid battle hand before joining the queue'})
-            return
-    except (json.JSONDecodeError, TypeError):
-        emit('queue_error', {'message': 'Please select a valid battle hand before joining the queue'})
-        return
-    
-    # Add player to queue
-    success, message = matchmaking.add_player_to_queue(player_id, current_hand['cards'])
-    
-    if success:
-        emit('queue_joined', {
-            'message': 'Successfully joined the queue',
-            'queue_size': len(matchmaking.queue)
-        })
-        # Join a room for this player
-        room_name = f"player_{player_id}"
-        join_room(room_name)
-        print(f"Player {player_id} joined room: {room_name}")
-    else:
-        emit('queue_error', {'message': message})
-
-@socketio.on('leave_queue')
-def handle_leave_queue(data=None):
-    """Handle player leaving the matchmaking queue"""
-    if not current_user.is_authenticated:
-        emit('queue_error', {'message': 'You must be logged in to leave the queue'})
-        return
-    
-    player_id = current_user.id
-    matchmaking.remove_player_from_queue(player_id)
-    
-    emit('queue_left', {'message': 'Successfully left the queue'})
-    room_name = f"player_{player_id}"
-    leave_room(room_name)
-    print(f"Player {player_id} left room: {room_name}")
-
-@socketio.on('get_queue_status')
-def handle_get_queue_status(data=None):
-    """Get the current queue status for the player"""
-    if not current_user.is_authenticated:
-        emit('queue_error', {'message': 'You must be logged in to check queue status'})
-        return
-    
-    player_id = current_user.id
-    status = matchmaking.get_queue_status(player_id)
-    
-    emit('queue_status', status)
-
-@socketio.on('get_game_state')
-def handle_get_game_state(data=None):
-    """Get the current game state for the player"""
-    if not current_user.is_authenticated:
-        emit('game_error', {'message': 'You must be logged in to get game state'})
-        return
-    
-    player_id = current_user.id
-    print(f"DEBUG: Player {player_id} requesting game state")
-    game_state = matchmaking.get_game_state(player_id)
-    
-    if game_state:
-        print(f"DEBUG: Sending game state to player {player_id}")
-        emit('game_state_update', game_state)
-    else:
-        print(f"DEBUG: No game state for player {player_id}")
-        emit('game_error', {'message': 'You are not in a game'})
-
-@socketio.on('play_card')
-def handle_play_card(data):
-    """Handle playing a card"""
-    if not current_user.is_authenticated:
-        emit('game_error', {'message': 'You must be logged in to play cards'})
-        return
-    
-    player_id = current_user.id
-    card_index = data.get('card_index')
-    location_index = data.get('location_index')
-    
-    if card_index is None or location_index is None:
-        emit('game_error', {'message': 'Card index and location index are required'})
-        return
-    
-    success, message = matchmaking.play_card(player_id, card_index, location_index)
-    
-    if success:
-        emit('card_played', {'message': message})
-    else:
-        emit('game_error', {'message': message})
-
-@socketio.on('end_turn')
-def handle_end_turn(data=None):
-    """Handle ending a turn"""
-    if not current_user.is_authenticated:
-        emit('game_error', {'message': 'You must be logged in to end turn'})
-        return
-    
-    player_id = current_user.id
-    success, message = matchmaking.end_turn(player_id)
-    
-    if success:
-        emit('turn_ended', {'message': message})
-    else:
-        emit('game_error', {'message': message})
-
-@socketio.on('join_player_room')
-def handle_join_player_room(data=None):
-    """Handle player joining their personal room"""
-    if not current_user.is_authenticated:
-        print(f"DEBUG: Unauthenticated user trying to join room")
-        return
-    
-    player_id = current_user.id
-    room_name = f"player_{player_id}"
-    join_room(room_name)
-    print(f"DEBUG: Player {player_id} joined room: {room_name}")
-    
-    # Check if player is in a game
-    game_data = matchmaking.get_player_game(player_id)
-    if game_data:
-        print(f"DEBUG: Player {player_id} is in game {list(matchmaking.active_games.keys())}")
-        # Send initial game state
-        game_state = matchmaking.get_game_state(player_id)
-        if game_state:
-            print(f"DEBUG: Sending initial game state to player {player_id}")
-            emit('game_state_update', game_state)
-    else:
-        print(f"DEBUG: Player {player_id} is not in a game")
-
-@socketio.on('leave_game')
-def handle_leave_game(data=None):
-    """Handle player manually leaving a game"""
-    if not current_user.is_authenticated:
-        emit('game_error', {'message': 'You must be logged in to leave a game'})
-        return
-    
-    player_id = current_user.id
-    print(f"Player {player_id} manually leaving game")
-    
-    # Remove from queue first
-    matchmaking.remove_player_from_queue(player_id)
-    
-    # Get opponent ID before removing from game
-    other_player_id = matchmaking.get_opponent_id(player_id)
-    game_data = matchmaking.get_player_game(player_id)
-    
-    if game_data:
-        game_id = matchmaking._get_game_id_by_data(game_data)
-        print(f"Player {player_id} was in game {game_id} with opponent {other_player_id}")
+        # Serialize the game object
+        game_bytes = pickle.dumps(game)
+        game_data = base64.b64encode(game_bytes).decode('utf-8')
         
-        # Notify the other player that their opponent left
-        if socketio and other_player_id:
-            print(f"Attempting to send opponent_left event to room player_{other_player_id}")
-            socketio.emit('opponent_left', {
-                'message': 'Your opponent has left the game',
-                'game_id': game_id
-            }, room=f"player_{other_player_id}")
-            print(f"Notified player {other_player_id} that opponent left")
+        # Check if game state already exists for this user
+        existing_state = GameState.query.filter_by(user_id=user_id).first()
+        if existing_state:
+            existing_state.game_data = game_data
+            existing_state.date_updated = func.now()
         else:
-            print(f"Could not notify opponent: socketio={bool(socketio)}, other_player_id={other_player_id}")
+            new_state = GameState(user_id=user_id, game_data=game_data)
+            db.session.add(new_state)
         
-        # Remove both players from the game
-        matchmaking.remove_player_from_game(player_id)
-        
-        emit('game_left', {'message': 'Successfully left the game'})
-        print(f"Player {player_id} successfully left game {game_id}")
-    else:
-        print(f"Player {player_id} tried to leave but was not in a game")
-        emit('game_error', {'message': 'You are not in a game'})
+        db.session.commit()
+        return True
+    except Exception as e:
+        print(f"Error saving game state: {e}")
+        db.session.rollback()
+        return False
+
+def load_game_state(user_id):
+    """Load game state from database"""
+    try:
+        game_state = GameState.query.filter_by(user_id=user_id).first()
+        if game_state and game_state.game_data:
+            # Deserialize the game object
+            game_bytes = base64.b64decode(game_state.game_data.encode('utf-8'))
+            game = pickle.loads(game_bytes)
+            return game
+        return None
+    except Exception as e:
+        print(f"Error loading game state: {e}")
+        return None
+
+def clear_game_state(user_id):
+    """Clear game state from database"""
+    try:
+        # Use delete() with synchronize_session=False to avoid the warning
+        deleted_count = GameState.query.filter_by(user_id=user_id).delete(synchronize_session=False)
+        db.session.commit()
+        return True
+    except Exception as e:
+        print(f"Error clearing game state: {e}")
+        db.session.rollback()
+        return False
+
+
+
+
 
 
 
@@ -352,51 +175,28 @@ def index():
                              card_id_to_name={},
                              unlocked_cards=[])
 
-@app.route('/game')
-@login_required
-def game():
-    global current_game
-    
-    # Check if user has a current hand selected
-    current_hand_data = current_user.misc2
-    if not current_hand_data:
-        # No hand selected, redirect to index with message
-        flash('Please select a battle hand before starting a game.', 'warning')
-        return redirect(url_for('index'))
-    
-    try:
-        current_hand = json.loads(current_hand_data)
-        if not current_hand or 'cards' not in current_hand:
-            flash('Please select a valid battle hand before starting a game.', 'warning')
-            return redirect(url_for('index'))
-    except (json.JSONDecodeError, TypeError):
-        flash('Please select a valid battle hand before starting a game.', 'warning')
-        return redirect(url_for('index'))
-    
-    if current_game is None:
-        current_game = Game()
-    return render_template('game.html', game=current_game, characters=CHARACTERS, user=current_user)
 
-@app.route('/multiplayer')
+
+@app.route('/single-player')
 @login_required
-def multiplayer_game():
+def single_player_game():
     # Check if user has a current hand selected
     current_hand_data = current_user.misc2
     if not current_hand_data:
         # No hand selected, redirect to index with message
-        flash('Please select a battle hand before starting a multiplayer game.', 'warning')
+        flash('Please select a battle hand before starting a single player game.', 'warning')
         return redirect(url_for('index'))
     
     try:
         current_hand = json.loads(current_hand_data)
         if not current_hand or 'cards' not in current_hand:
-            flash('Please select a valid battle hand before starting a multiplayer game.', 'warning')
+            flash('Please select a valid battle hand before starting a single player game.', 'warning')
             return redirect(url_for('index'))
     except (json.JSONDecodeError, TypeError):
-        flash('Please select a valid battle hand before starting a multiplayer game.', 'warning')
+        flash('Please select a valid battle hand before starting a single player game.', 'warning')
         return redirect(url_for('index'))
     
-    return render_template('multiplayer_game.html', user=current_user)
+    return render_template('single_player_game.html', user=current_user)
 
 @app.route('/collection')
 @login_required
@@ -685,6 +485,27 @@ def game_result():
         "progress": progress
     })
 
+@app.route('/api/clear-game-state', methods=['POST'])
+@login_required
+def clear_game_state_endpoint():
+    """Clear the current game state"""
+    try:
+        if clear_game_state(current_user.id):
+            return jsonify({
+                "success": True,
+                "message": "Game state cleared successfully."
+            })
+        else:
+            return jsonify({
+                "success": False,
+                "message": "Failed to clear game state."
+            })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "message": f"Error clearing game state: {str(e)}"
+        })
+
 @app.route('/api/reset-user', methods=['POST'])
 @login_required
 def reset_user():
@@ -777,77 +598,12 @@ def debug_user():
         "total_cards": len(CHARACTERS)
     })
 
-@app.route('/api/game-state')
-def get_game_state():
-    global current_game
-    if current_game is None:
-        current_game = Game()
-    
-    return jsonify(current_game.get_game_state())
 
-@app.route('/api/play-card', methods=['POST'])
-def play_card():
-    global current_game
-    data = request.get_json()
-    
-    # Check if game exists, create new one if it doesn't
-    if current_game is None:
-        current_game = Game()
-        return jsonify({
-            "success": False,
-            "message": "Game was reset. Please try again.",
-            "game_state": current_game.get_game_state()
-        })
-    
-    card_index = data.get('card_index')
-    location_index = data.get('location_index')
-    
-    success, message = current_game.play_card(card_index, location_index, "player")
-    
-    return jsonify({
-        "success": success,
-        "message": message,
-        "game_state": current_game.get_game_state()
-    })
-
-@app.route('/api/end-turn', methods=['POST'])
-def end_turn():
-    global current_game
-    
-    # Check if game exists, create new one if it doesn't
-    if current_game is None:
-        current_game = Game()
-        return jsonify({
-            "success": True,
-            "game_state": current_game.get_game_state()
-        })
-    
-    # Simple AI opponent move
-    if current_game.opponent_hand and current_game.opponent_energy > 0:
-        # Find playable cards
-        playable_cards = []
-        for i, card in enumerate(current_game.opponent_hand):
-            if card["cost"] <= current_game.opponent_energy:
-                playable_cards.append(i)
-        
-        if playable_cards:
-            # Play a random playable card to a random location
-            card_index = random.choice(playable_cards)
-            location_index = random.randint(0, 2)
-            current_game.play_card(card_index, location_index, "opponent")
-    
-    current_game.end_turn()
-    
-    return jsonify({
-        "success": True,
-        "game_state": current_game.get_game_state()
-    })
 
 @app.route('/api/new-game', methods=['POST'])
 @login_required
 def new_game():
-    global current_game
-    
+    """Start a new single player game"""
     # Get the user's current hand
     current_hand_data = current_user.misc2
     if not current_hand_data:
@@ -864,19 +620,177 @@ def new_game():
                 "message": "Invalid hand data. Please select a valid battle hand."
             })
         
-        # Create new game with the current hand
-        current_game = Game(player_deck_ids=current_hand["cards"])
+        # Clear any existing game state
+        clear_game_state(current_user.id)
         
-        return jsonify({
-            "success": True,
-            "game_state": current_game.get_game_state(),
-            "hand_name": current_hand["name"]
-        })
+        # Create new game with the current hand
+        from game import Game
+        game = Game(player_deck_ids=current_hand["cards"])
+        
+        # Save the game state
+        if save_game_state(current_user.id, game):
+            return jsonify({
+                "success": True,
+                "game_state": game.get_game_state(),
+                "hand_name": current_hand["name"]
+            })
+        else:
+            return jsonify({
+                "success": False,
+                "message": "Failed to save game state."
+            })
         
     except (json.JSONDecodeError, TypeError):
         return jsonify({
             "success": False,
             "message": "Error reading hand data. Please select a valid battle hand."
+        })
+
+@app.route('/api/play-card', methods=['POST'])
+@login_required
+def play_card():
+    """Play a card in single player game"""
+    data = request.get_json()
+    
+    card_index = data.get('card_index')
+    location_index = data.get('location_index')
+    
+    if card_index is None or location_index is None:
+        return jsonify({
+            "success": False,
+            "message": "Card index and location index are required."
+        })
+    
+    try:
+        # Load existing game state
+        game = load_game_state(current_user.id)
+        if not game:
+            return jsonify({
+                "success": False,
+                "message": "No active game found. Please start a new game."
+            })
+        
+        success, message = game.play_card(card_index, location_index, "player")
+        
+        if success:
+            # Save the updated game state
+            save_game_state(current_user.id, game)
+        
+        return jsonify({
+            "success": success,
+            "message": message,
+            "game_state": game.get_game_state()
+        })
+        
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "message": f"Error playing card: {str(e)}"
+        })
+
+@app.route('/api/ai-play-card', methods=['POST'])
+@login_required
+def ai_play_card():
+    """AI plays a card in single player game"""
+    data = request.get_json()
+    
+    card_index = data.get('card_index')
+    location_index = data.get('location_index')
+    
+    if card_index is None or location_index is None:
+        return jsonify({
+            "success": False,
+            "message": "Card index and location index are required."
+        })
+    
+    try:
+        # Load existing game state
+        game = load_game_state(current_user.id)
+        if not game:
+            return jsonify({
+                "success": False,
+                "message": "No active game found. Please start a new game."
+            })
+        
+        success, message = game.play_card(card_index, location_index, "opponent")
+        
+        if success:
+            # Save the updated game state
+            save_game_state(current_user.id, game)
+        
+        return jsonify({
+            "success": success,
+            "message": message,
+            "game_state": game.get_game_state()
+        })
+        
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "message": f"Error with AI playing card: {str(e)}"
+        })
+
+@app.route('/api/ai-end-turn', methods=['POST'])
+@login_required
+def ai_end_turn():
+    """AI ends turn in single player game"""
+    try:
+        # Load existing game state
+        game = load_game_state(current_user.id)
+        if not game:
+            return jsonify({
+                "success": False,
+                "message": "No active game found. Please start a new game."
+            })
+        
+        # In single player mode, we can end the turn regardless of whose turn it is
+        success, message = game.end_turn()
+        
+        if success:
+            # Save the updated game state
+            save_game_state(current_user.id, game)
+        
+        return jsonify({
+            "success": success,
+            "message": message,
+            "game_state": game.get_game_state()
+        })
+        
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "message": f"Error with AI ending turn: {str(e)}"
+        })
+
+@app.route('/api/end-turn', methods=['POST'])
+@login_required
+def end_turn():
+    """Player ends turn in single player game"""
+    try:
+        # Load existing game state
+        game = load_game_state(current_user.id)
+        if not game:
+            return jsonify({
+                "success": False,
+                "message": "No active game found. Please start a new game."
+            })
+        
+        success, message = game.end_turn("player")
+        
+        if success:
+            # Save the updated game state
+            save_game_state(current_user.id, game)
+        
+        return jsonify({
+            "success": success,
+            "message": message,
+            "game_state": game.get_game_state()
+        })
+        
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "message": f"Error ending turn: {str(e)}"
         })
 
 @app.route('/api/save-hand', methods=['POST'])
@@ -1251,7 +1165,7 @@ def logout():
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
-    socketio.run(app, debug=True, port=5002)
+    app.run(debug=True, port=5002)
 
 
 
