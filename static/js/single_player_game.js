@@ -180,6 +180,7 @@ class SinglePlayerGame {
         location.opponent_cards.forEach((card, cardIndex) => {
             const cardElement = this.createCardElement(card, false, cardIndex, locationIndex);
             const cardDiv = cardElement.querySelector('.game-card');
+            cardDiv.style.cursor = 'pointer';
             cardDiv.addEventListener('click', () => {
                 this.showCardDetail(card, locationIndex, 'opponent', cardIndex);
             });
@@ -191,6 +192,7 @@ class SinglePlayerGame {
         location.player_cards.forEach((card, cardIndex) => {
             const cardElement = this.createCardElement(card, false, cardIndex, locationIndex);
             const cardDiv = cardElement.querySelector('.game-card');
+            cardDiv.style.cursor = 'pointer';
             cardDiv.addEventListener('click', () => {
                 this.showCardDetail(card, locationIndex, 'player', cardIndex);
             });
@@ -592,6 +594,35 @@ class SinglePlayerGame {
     }
 
     async showGameOver(data) {
+        // Award XP first
+        let xpInfo = null;
+        try {
+            const result = data.winner === 'player' ? 'win' : data.winner === 'opponent' ? 'loss' : 'tie';
+            const response = await fetch('/api/game-result', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    result: result
+                })
+            });
+            
+            const xpData = await response.json();
+            if (xpData.success) {
+                xpInfo = {
+                    xp_awarded: xpData.message.includes('+') ? parseInt(xpData.message.match(/\+(\d+)/)[1]) : 0,
+                    new_total_xp: xpData.new_xp,
+                    leveled_up: xpData.leveled_up,
+                    new_level: xpData.new_level,
+                    progress: xpData.progress,
+                    xp_for_next: xpData.xp_for_next
+                };
+            }
+        } catch (error) {
+            console.error('Error awarding XP:', error);
+        }
+        
         // Clear the game state from the server
         try {
             await fetch('/api/clear-game-state', {
@@ -617,8 +648,7 @@ class SinglePlayerGame {
         }
         
         // Add XP information if available
-        if (data.xp_info) {
-            const xpInfo = data.xp_info;
+        if (xpInfo) {
             resultText += `
                 <div class="mt-3">
                     <div class="alert alert-info">
@@ -715,6 +745,7 @@ class SinglePlayerGame {
         // Location effect
         const loc = this.gameState.locations[locationIndex];
         const locCards = player === 'player' ? loc.player_cards : loc.opponent_cards;
+        const opponentCards = player === 'player' ? loc.opponent_cards : loc.player_cards;
         let locationPower = 0;
         let locationSource = null;
         let isLocationReduction = false;
@@ -746,13 +777,10 @@ class SinglePlayerGame {
             breakdownContainer.appendChild(sourceItem);
         }
 
-        // Power boosts from ongoing abilities
-        const location = this.gameState.locations[locationIndex];
-        const cards = player === 'player' ? location.player_cards : location.opponent_cards;
-        
+        // Power boosts from ongoing abilities (other cards)
         let totalBoost = 0;
         const boostSources = [];
-        cards.forEach(otherCard => {
+        locCards.forEach(otherCard => {
             if (otherCard !== card && 
                 otherCard.ability_type === 'ongoing' && 
                 otherCard.ability_effect && 
@@ -773,6 +801,53 @@ class SinglePlayerGame {
             boostSources.forEach(source => {
                 const sourceItem = document.createElement('div');
                 sourceItem.className = 'power-breakdown-item positive';
+                sourceItem.style.marginLeft = '1rem';
+                sourceItem.style.fontSize = '0.9em';
+                sourceItem.innerHTML = `<span>• ${source}</span>`;
+                breakdownContainer.appendChild(sourceItem);
+            });
+        }
+
+        // "When alone" ability for this card
+        if (card.ability_type === 'ongoing' && 
+            card.ability_effect && 
+            card.ability_effect.type === 'when_alone' && 
+            locCards.length === 1) {
+            const aloneItem = document.createElement('div');
+            aloneItem.className = 'power-breakdown-item positive';
+            aloneItem.innerHTML = `<span>When Alone Bonus:</span><span>+${card.ability_effect.value}</span>`;
+            breakdownContainer.appendChild(aloneItem);
+            
+            const sourceItem = document.createElement('div');
+            sourceItem.className = 'power-breakdown-item positive';
+            sourceItem.style.marginLeft = '1rem';
+            sourceItem.style.fontSize = '0.9em';
+            sourceItem.innerHTML = `<span>• ${card.name} (+${card.ability_effect.value})</span>`;
+            breakdownContainer.appendChild(sourceItem);
+        }
+
+        // Power reductions from opponent cards
+        let totalReduction = 0;
+        const reductionSources = [];
+        opponentCards.forEach(opponentCard => {
+            if (opponentCard.ability_type === 'ongoing' && 
+                opponentCard.ability_effect && 
+                opponentCard.ability_effect.type === 'reduce_opponent_power') {
+                totalReduction += opponentCard.ability_effect.value;
+                reductionSources.push(`${opponentCard.name} (-${opponentCard.ability_effect.value})`);
+            }
+        });
+
+        if (totalReduction > 0) {
+            const reductionItem = document.createElement('div');
+            reductionItem.className = 'power-breakdown-item negative';
+            reductionItem.innerHTML = `<span>Power Reductions:</span><span>-${totalReduction}</span>`;
+            breakdownContainer.appendChild(reductionItem);
+            
+            // Add individual reduction sources
+            reductionSources.forEach(source => {
+                const sourceItem = document.createElement('div');
+                sourceItem.className = 'power-breakdown-item negative';
                 sourceItem.style.marginLeft = '1rem';
                 sourceItem.style.fontSize = '0.9em';
                 sourceItem.innerHTML = `<span>• ${source}</span>`;
