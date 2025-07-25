@@ -750,6 +750,15 @@ class SinglePlayerGame {
         const basePower = card.power;
         const modifiedPower = card.modified_power !== undefined ? card.modified_power : card.power;
         
+        // Debug logging
+        console.log('Power Breakdown Debug:', {
+            cardName: card.name,
+            basePower: basePower,
+            modifiedPower: modifiedPower,
+            locationIndex: locationIndex,
+            player: player
+        });
+        
         // Base power
         const baseItem = document.createElement('div');
         baseItem.className = 'power-breakdown-item neutral';
@@ -763,6 +772,15 @@ class SinglePlayerGame {
         let locationPower = 0;
         let locationSource = null;
         let isLocationReduction = false;
+        
+        // Debug logging for location
+        console.log('Location Debug:', {
+            locationName: loc.name,
+            effectType: loc.effect_type,
+            effectValue: loc.effect_value,
+            playerCards: locCards.length,
+            opponentCards: opponentCards.length
+        });
         
         if (loc.effect_type === 'power_boost') {
             locationPower = loc.effect_value;
@@ -789,6 +807,9 @@ class SinglePlayerGame {
             sourceItem.style.fontSize = '0.9em';
             sourceItem.innerHTML = `<span>• ${locationSource}</span>`;
             breakdownContainer.appendChild(sourceItem);
+        } else {
+            // Debug: show when no location effect is found
+            console.log('No location effect found for:', loc.name, 'effect_type:', loc.effect_type);
         }
 
         // Power boosts from ongoing abilities (other cards)
@@ -852,6 +873,26 @@ class SinglePlayerGame {
             }
         });
 
+        // Power reductions from all cards (including own cards)
+        const allCards = [...locCards, ...opponentCards];
+        allCards.forEach(otherCard => {
+            if (otherCard !== card && 
+                otherCard.ability_type === 'ongoing' && 
+                otherCard.ability_effect && 
+                otherCard.ability_effect.type === 'reduce_all_power') {
+                totalReduction += otherCard.ability_effect.value;
+                reductionSources.push(`${otherCard.name} (-${otherCard.ability_effect.value})`);
+            }
+        });
+        
+        // Debug logging for reductions
+        console.log('Power Reduction Debug:', {
+            totalReduction: totalReduction,
+            reductionSources: reductionSources,
+            opponentCards: opponentCards.map(c => ({ name: c.name, ability: c.ability_effect?.type })),
+            allCards: allCards.map(c => ({ name: c.name, ability: c.ability_effect?.type }))
+        });
+
         if (totalReduction > 0) {
             const reductionItem = document.createElement('div');
             reductionItem.className = 'power-breakdown-item negative';
@@ -867,10 +908,27 @@ class SinglePlayerGame {
                 sourceItem.innerHTML = `<span>• ${source}</span>`;
                 breakdownContainer.appendChild(sourceItem);
             });
+        } else {
+            // Debug: show when no power reductions are found
+            console.log('No power reductions found. All cards checked:', allCards.map(c => ({ 
+                name: c.name, 
+                ability_type: c.ability_type, 
+                effect_type: c.ability_effect?.type 
+            })));
         }
 
         // Total modified power
         if (modifiedPower !== basePower) {
+            const totalItem = document.createElement('div');
+            totalItem.className = 'power-breakdown-item neutral';
+            totalItem.style.fontWeight = 'bold';
+            totalItem.style.borderTop = '1px solid #dee2e6';
+            totalItem.style.paddingTop = '0.5rem';
+            totalItem.style.marginTop = '0.5rem';
+            totalItem.innerHTML = `<span>Total Power:</span><span>${modifiedPower}</span>`;
+            breakdownContainer.appendChild(totalItem);
+        } else {
+            // Always show total power even if no modifications
             const totalItem = document.createElement('div');
             totalItem.className = 'power-breakdown-item neutral';
             totalItem.style.fontWeight = 'bold';
